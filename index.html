@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dan Rader</title>
+    <link rel="stylesheet" href="/css/styles.scss">
+</head>
+<body>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="grid-overlay" aria-hidden="true">
+        <div class="grid-col"></div>
+        <div class="grid-col"></div>
+        <div class="grid-col"></div>
+        <div class="grid-col"></div>
+        <div class="grid-col"></div>
+        <div class="grid-col"></div>
+    </div>
+
+    <header>
+        <nav>
+            <div class="logo">Dan Rader</div>
+            <div class="util">
+                <button class="theme-toggle" aria-label="Toggle dark mode">
+                    <span class="theme-toggle__thumb" aria-hidden="true">
+                        <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                        <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/>
+                            <line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/>
+                            <line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                    </span>
+                </button>
+                <button class="hamburger" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <div id="infinite-scroll-root">
+        <div class="infinite-sentinel" data-sentinel="top" aria-hidden="true"></div>
+        <div class="site-copy" data-copy="0">
+            <main>
+        <section class="intro" aria-label="Intro" id="top">
+            <img class="intro-star" src="/assets/star.svg" alt="" aria-hidden="true">
+            <h1 class="intro-title">
+                Dan Rader is a <br>
+                <span class="intro-rotator"><span class="intro-em intro-rotator__word">Design</span></span>
+                <span class="intro-leader">leader.</span>
+            </h1>
+        </section>
+
+        <section class="split split--top" id="howdy" aria-label="Howdy">
+            <div class="split-label">
+                <p class="section-label">Howdy 👋🏻</p>
+            </div>
+            <div class="split-content bio-text">
+                <p>Dan Rader works at the intersection of user and business needs and applies his passion for design, systems thinking, and technology to create impactful user experiences. Dan embraces empathy and communication to guide teams of talented humans to create their best work.</p>
+                <p>Dan Rader is Director of UX Foundations at Etsy, where he oversees product design, content design to deliver craft and quality at scale.</p>
+            </div>
+        </section>
+
+        <section class="split" id="bio" aria-label="Bio">
+            <div class="split-label">
+                <p class="section-label">Bio</p>
+            </div>
+            <div class="split-content bio-text">
+                <p>Dan Rader is a Director of Product Design for Foundation at Roblox, where he shapes user interactions in the metaverse across mobile, desktop, console, XR, and everywhere between. Previously, Dan led the global design org for boutique fitness at Xplor and worked across a number of agencies collaborating with a diverse client roster including Volkswagen, the Obama Foundation, Capital One, International Rescue Committee, NHL, National Aquarium, Shell/Jiffy Lube, Accion, NIH, and the Department of Education.</p>
+                <p>Dan lives in Syracuse, NY with his wife, corgi, and sons Remy &amp; Luca. He is a ceramicist in his 5-to-9 where he enjoys finding a creative outlet in a physical medium.</p>
+            </div>
+        </section>
+
+        <section class="split split--top" id="ask" aria-label="Ask me about">
+            <div class="split-label">
+                <p class="section-label">Ask me about</p>
+            </div>
+            <div class="ask-row">
+                <div class="cards" id="ask-cards" role="list" aria-label="Ask me about topics">
+                    <article class="card" role="listitem">
+                        <div class="card-visual" aria-hidden="true">
+                            <svg viewBox="0 0 200 200" fill="none">
+                                <polygon points="100,10 185,160 15,160" />
+                                <polygon points="100,35 165,155 35,155" />
+                                <polygon points="100,60 145,150 55,150" />
+                            </svg>
+                        </div>
+                        <div class="card-body">
+                            <p>Driving human connection in e-commerce</p>
+                        </div>
+                    </article>
+                    <article class="card" role="listitem">
+                        <div class="card-visual" aria-hidden="true">
+                            <svg viewBox="0 0 200 200" fill="none">
+                                <circle cx="100" cy="100" r="18" />
+                                <circle cx="100" cy="100" r="36" />
+                                <circle cx="100" cy="100" r="56" />
+                                <circle cx="100" cy="100" r="76" />
+                                <circle cx="100" cy="100" r="96" />
+                            </svg>
+                        </div>
+                        <div class="card-body">
+                            <p>Building cross-platform design systems</p>
+                        </div>
+                    </article>
+                    <article class="card" role="listitem">
+                        <div class="card-visual" aria-hidden="true">
+                            <svg viewBox="0 0 200 200" fill="none">
+                                <polygon points="100,10 185,160 15,160" />
+                                <polygon points="100,35 165,155 35,155" />
+                                <polygon points="100,60 145,150 55,150" />
+                            </svg>
+                        </div>
+                        <div class="card-body">
+                            <p>Defining cross-group platform thinking</p>
+                        </div>
+                    </article>
+                    <article class="card" role="listitem">
+                        <div class="card-visual" aria-hidden="true">
+                            <svg viewBox="0 0 200 200" fill="none">
+                                <circle cx="100" cy="100" r="18" />
+                                <circle cx="100" cy="100" r="36" />
+                                <circle cx="100" cy="100" r="56" />
+                                <circle cx="100" cy="100" r="76" />
+                                <circle cx="100" cy="100" r="96" />
+                            </svg>
+                        </div>
+                        <div class="card-body">
+                            <p>Uniting teams through design systems</p>
+                        </div>
+                    </article>
+                    <article class="card" role="listitem">
+                        <div class="card-visual" aria-hidden="true">
+                            <svg viewBox="0 0 200 200" fill="none">
+                                <polygon points="100,10 185,160 15,160" />
+                                <polygon points="100,35 165,155 35,155" />
+                                <polygon points="100,60 145,150 55,150" />
+                            </svg>
+                        </div>
+                        <div class="card-body">
+                            <p>Crafting systems-thinking approaches</p>
+                        </div>
+                    </article>
+
+                    <article class="card" role="listitem">
+                        <div class="card-visual" aria-hidden="true">
+                            <svg viewBox="0 0 200 200" fill="none">
+                                <circle cx="100" cy="100" r="18" />
+                                <circle cx="100" cy="100" r="36" />
+                                <circle cx="100" cy="100" r="56" />
+                                <circle cx="100" cy="100" r="76" />
+                                <circle cx="100" cy="100" r="96" />
+                            </svg>
+                        </div>
+                        <div class="card-body">
+                            <p>Design leadership and mentorship</p>
+                        </div>
+                    </article>
+
+                    <article class="card" role="listitem">
+                        <div class="card-visual" aria-hidden="true">
+                            <svg viewBox="0 0 200 200" fill="none">
+                                <polygon points="100,10 185,160 15,160" />
+                                <polygon points="100,35 165,155 35,155" />
+                                <polygon points="100,60 145,150 55,150" />
+                            </svg>
+                        </div>
+                        <div class="card-body">
+                            <p>Product strategy and prioritization</p>
+                        </div>
+                    </article>
+
+                    <article class="card" role="listitem">
+                        <div class="card-visual" aria-hidden="true">
+                            <svg viewBox="0 0 200 200" fill="none">
+                                <circle cx="100" cy="100" r="18" />
+                                <circle cx="100" cy="100" r="36" />
+                                <circle cx="100" cy="100" r="56" />
+                                <circle cx="100" cy="100" r="76" />
+                                <circle cx="100" cy="100" r="96" />
+                            </svg>
+                        </div>
+                        <div class="card-body">
+                            <p>Systems thinking in practice</p>
+                        </div>
+                    </article>
+
+                    <article class="card" role="listitem">
+                        <div class="card-visual" aria-hidden="true">
+                            <svg viewBox="0 0 200 200" fill="none">
+                                <polygon points="100,10 185,160 15,160" />
+                                <polygon points="100,35 165,155 35,155" />
+                                <polygon points="100,60 145,150 55,150" />
+                            </svg>
+                        </div>
+                        <div class="card-body">
+                            <p>Cross-functional collaboration</p>
+                        </div>
+                    </article>
+
+                    <article class="card" role="listitem">
+                        <div class="card-visual" aria-hidden="true">
+                            <svg viewBox="0 0 200 200" fill="none">
+                                <circle cx="100" cy="100" r="18" />
+                                <circle cx="100" cy="100" r="36" />
+                                <circle cx="100" cy="100" r="56" />
+                                <circle cx="100" cy="100" r="76" />
+                                <circle cx="100" cy="100" r="96" />
+                            </svg>
+                        </div>
+                        <div class="card-body">
+                            <p>Building teams and culture</p>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="cards-scrollbar" aria-label="Ask me about scrollbar">
+                    <div class="cards-scrollbar__inner">
+                        <div class="cards-scrollbar__track" aria-hidden="true"></div>
+                        <div class="cards-scrollbar__thumb" aria-hidden="true"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="split" id="core-tenets" aria-label="Core Tenants">
+            <div class="split-label">
+                <p class="section-label">Core Tenants</p>
+            </div>
+            <div class="split-content">
+                <h2 class="tenet">GIVE A DAMN</h2>
+                <h2 class="tenet">STRONG<br>CONVICTIONS,<br>LOOSELY HELD</h2>
+                <h2 class="tenet">BIAS<br>TOWARDS<br>ACTION</h2>
+            </div>
+        </section>
+
+        <section class="split" id="timeline" aria-label="Timeline">
+            <div class="split-label">
+                <p class="section-label">Timeline</p>
+            </div>
+            <div class="split-content timeline-list">
+                <div class="timeline-item">
+                    <h3 class="timeline-company">Etsy</h3>
+                    <p class="timeline-role">Design Director, UX Foundations<br>2025–Today</p>
+                </div>
+                <div class="timeline-item">
+                    <h3 class="timeline-company">Roblox</h3>
+                    <p class="timeline-role">Design Director, Group Foundations<br>2025–Today</p>
+                </div>
+                <div class="timeline-item">
+                    <h3 class="timeline-company">Xplor</h3>
+                    <p class="timeline-role">Global Head of Product Design<br>2025–Today</p>
+                </div>
+                <div class="timeline-item">
+                    <h3 class="timeline-company">ISL (Wunderman Thompson)</h3>
+                    <p class="timeline-role">Associate Creative Director<br>2025–Today</p>
+                </div>
+                <div class="timeline-item">
+                    <h3 class="timeline-company">Deloitte Digital</h3>
+                    <p class="timeline-role">Visual Designer<br>2025–Today</p>
+                </div>
+                <div class="timeline-item">
+                    <h3 class="timeline-company">Social Driver</h3>
+                    <p class="timeline-role">Visual Designer<br>2025–Today</p>
+                </div>
+                <div class="timeline-item">
+                    <h3 class="timeline-company">Wolf Trap</h3>
+                    <p class="timeline-role">Graphic Designer<br>2025–Today</p>
+                </div>
+            </div>
+        </section>
+            </main>
+
+            <footer class="footer" aria-label="Footer">
+                <div class="footer-inner">
+                    <a class="footer-pill footer-pill--email" href="mailto:itsdanrader@gmail.com">
+                        <span class="footer-email-user">itsdanrader</span><span class="footer-email-domain">@gmail.com</span>
+                    </a>
+                    <a class="footer-pill footer-pill--link" href="#" aria-label="LinkedIn">
+                        Linkedin
+                    </a>
+                    <a class="footer-pill footer-pill--link" href="#" aria-label="Other">
+                        Other
+                    </a>
+                </div>
+            </footer>
+        </div>
+        <div class="infinite-sentinel" data-sentinel="bottom" aria-hidden="true"></div>
+    </div>
+
+    <script type="module" src="/js/infiniteLoopScroll.js"></script>
+    <script type="module" src="/js/script.js"></script>
+</body>
+</html>
