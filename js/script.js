@@ -4,47 +4,158 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Website loaded successfully!');
 
-    // Oversized pointer cursor for footer pills
+    // Grain parallax: drift the grain very slowly behind scroll.
+    const grainLayer = document.querySelector('.grain');
+    if (grainLayer) {
+        const PARALLAX_FACTOR = 0.0225;
+        let raf = 0;
+        let lastY = 0;
+
+        const update = () => {
+            raf = 0;
+            const y = window.scrollY || window.pageYOffset || 0;
+            if (y === lastY) return;
+            lastY = y;
+            const offsetPx = Math.round(y * PARALLAX_FACTOR);
+            grainLayer.style.setProperty('--grain-parallax-y', `${offsetPx}px`);
+        };
+
+        const schedule = () => {
+            if (raf) return;
+            raf = window.requestAnimationFrame(update);
+        };
+
+        update();
+        window.addEventListener('scroll', schedule, { passive: true });
+    }
+
+    // Custom hand cursor (Font Awesome masked) + smooth transitions between states
     const finePointer = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
     if (finePointer) {
-        const footerPills = document.querySelectorAll('.footer-pill');
-        if (footerPills.length) {
-            const bigCursor = document.createElement('div');
-            bigCursor.className = 'big-pointer-cursor';
-            bigCursor.setAttribute('aria-hidden', 'true');
-            document.body.appendChild(bigCursor);
+        const cursor = document.createElement('div');
+        cursor.className = 'site-cursor';
+        cursor.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(cursor);
+        document.body.classList.add('has-custom-cursor');
 
-            let isActive = false;
+        let isBig = false;
+        let hoveredLink = null;
 
-            const setActive = (next) => {
-                isActive = next;
-                document.body.classList.toggle('is-big-cursor', isActive);
-                if (!isActive) {
-                    bigCursor.style.left = '-9999px';
-                    bigCursor.style.top = '-9999px';
+        const BOUNCE_OUT_MS = 220;
+        const HAND_SWAP_POINT = 0.25;
+        const HAND_RELEASE_DELAY_MS = Math.round(BOUNCE_OUT_MS * HAND_SWAP_POINT);
+        let handReleaseTimer = 0;
+        let activeHoverCursorClass = '';
+
+        const getHoverCursorClassForTarget = (target) => {
+            if (!target || !target.matches) return 'cursor--hand';
+            if (
+                target.matches(
+                    'a.footer-pill--email[href^="mailto:itsdanrader"], a.footer-pill--email[href*="itsdanrader@gmail.com"]'
+                )
+            ) {
+                return 'cursor--email-horns';
+            }
+            return 'cursor--hand';
+        };
+
+        let tipX = 70;
+        let tipY = 16;
+
+        const readCursorTip = () => {
+            const styles = window.getComputedStyle(cursor);
+            const x = parseFloat(styles.getPropertyValue('--cursor-tip-x'));
+            const y = parseFloat(styles.getPropertyValue('--cursor-tip-y'));
+            tipX = Number.isFinite(x) ? x : 70;
+            tipY = Number.isFinite(y) ? y : 16;
+        };
+
+        readCursorTip();
+
+        const setBig = (next) => {
+            isBig = next;
+            document.body.classList.toggle('cursor--big', isBig);
+
+            // Ensure tip offsets match the active cursor state (e.g., finger-tip hotspot on hover).
+            window.requestAnimationFrame(readCursorTip);
+        };
+
+        const onMove = (e) => {
+            // Rotate based on horizontal position:
+            // left edge => -60deg, center => 0deg, right edge => +60deg.
+            const vw = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+            const t = Math.max(0, Math.min(1, e.clientX / vw));
+            const xNorm = (t * 2) - 1;
+            const angleDeg = xNorm * 60;
+            cursor.style.setProperty('--cursor-rotate', `${angleDeg.toFixed(2)}deg`);
+
+            // Keep the cursor "tip" pinned to the system pointer even as rotation changes.
+            // We rotate around the element's top-left; therefore the hotspot offset must rotate too.
+            const theta = (angleDeg * Math.PI) / 180;
+            const cos = Math.cos(theta);
+            const sin = Math.sin(theta);
+            const scale = isBig ? 1 : 0.22;
+
+            const dx = (tipX * cos - tipY * sin) * scale;
+            const dy = (tipX * sin + tipY * cos) * scale;
+
+            cursor.style.left = `${e.clientX - dx}px`;
+            cursor.style.top = `${e.clientY - dy}px`;
+        };
+
+        window.addEventListener('pointermove', onMove, { passive: true });
+        window.addEventListener('resize', readCursorTip);
+        window.addEventListener('blur', () => {
+            cursor.style.left = '-9999px';
+            cursor.style.top = '-9999px';
+            setBig(false);
+            if (handReleaseTimer) window.clearTimeout(handReleaseTimer);
+            handReleaseTimer = 0;
+            if (activeHoverCursorClass) document.body.classList.remove(activeHoverCursorClass);
+            activeHoverCursorClass = '';
+            hoveredLink = null;
+        });
+
+        // Big cursor on hover for any link (and Ask-me-about cards + theme toggle).
+        // Use event delegation so this also works for dynamically cloned content.
+        document.addEventListener('pointerover', (e) => {
+            const target = e.target && e.target.closest ? e.target.closest('a, .card, button.theme-toggle') : null;
+            if (!target) return;
+
+            // Ignore movement within the same target.
+            if (e.relatedTarget && target.contains(e.relatedTarget)) return;
+
+            hoveredLink = target;
+
+            if (handReleaseTimer) window.clearTimeout(handReleaseTimer);
+            handReleaseTimer = 0;
+
+            if (activeHoverCursorClass) document.body.classList.remove(activeHoverCursorClass);
+            activeHoverCursorClass = getHoverCursorClassForTarget(target);
+            document.body.classList.add(activeHoverCursorClass);
+            setBig(true);
+        });
+
+        document.addEventListener('pointerout', (e) => {
+            const target = e.target && e.target.closest ? e.target.closest('a, .card, button.theme-toggle') : null;
+            if (!target) return;
+
+            // Ignore movement within the same target.
+            if (e.relatedTarget && target.contains(e.relatedTarget)) return;
+
+            if (hoveredLink === target) hoveredLink = null;
+            setBig(false);
+
+            // Keep the hand visible through most of the shrink so the user sees it contract.
+            if (handReleaseTimer) window.clearTimeout(handReleaseTimer);
+            handReleaseTimer = window.setTimeout(() => {
+                if (!document.body.classList.contains('cursor--big')) {
+                    if (activeHoverCursorClass) document.body.classList.remove(activeHoverCursorClass);
+                    activeHoverCursorClass = '';
                 }
-            };
-
-            const onMove = (e) => {
-                if (!isActive) return;
-
-                const tipX = 56;
-                const tipY = 12;
-                const left = e.clientX - tipX;
-                const top = e.clientY - tipY;
-
-                bigCursor.style.left = `${left}px`;
-                bigCursor.style.top = `${top}px`;
-            };
-
-            footerPills.forEach((pill) => {
-                pill.addEventListener('pointerenter', () => setActive(true));
-                pill.addEventListener('pointerleave', () => setActive(false));
-            });
-
-            window.addEventListener('pointermove', onMove, { passive: true });
-            window.addEventListener('blur', () => setActive(false));
-        }
+                handReleaseTimer = 0;
+            }, HAND_RELEASE_DELAY_MS);
+        });
     }
 
     // Hero rotating word (adjust this value to change the cadence)
@@ -52,8 +163,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const ROTATING_WORDS = ['Design', 'Systems', 'Craft', 'Leaned-in', 'Dad-Joke'];
     const WORD_FADE_MS = 220;
 
-    const rotator = document.querySelector('.intro-rotator');
-    const rotatorWord = document.querySelector('.intro-rotator__word');
+    // With infinite scrolling copies, there may be multiple .intro-rotator nodes.
+    // The real/source hero keeps id="top" (clone IDs are removed), so scope to that.
+    const introRoot = document.querySelector('#top') || document;
+    const rotator = introRoot.querySelector('.intro-rotator');
+    const rotatorWord = rotator ? rotator.querySelector('.intro-rotator__word') : null;
 
     if (rotator && rotatorWord) {
         const sizer = document.createElement('span');

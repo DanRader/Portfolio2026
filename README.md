@@ -89,3 +89,4 @@ Build the project and deploy the `dist/` folder to:
 ## Third-party assets
 
 - `public/assets/hand-pointer.svg` is from Font Awesome Free (Icons: CC BY 4.0): https://fontawesome.com/license/free
+- `public/assets/hand-spock.svg` is from Font Awesome Free (Icons: CC BY 4.0): https://fontawesome.com/license/free

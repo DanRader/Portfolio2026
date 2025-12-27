@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Bayon&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
 
 /* CSS Variables */
 :root {
@@ -9,11 +10,17 @@
 
     /* Layout */
     --header-height: 72px;
+    --section-spacing: 96px;
 
     /* Typography */
-    --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    --font-primary: 'Playfair Display', Georgia, 'Times New Roman', serif;
     --font-secondary: Georgia, 'Times New Roman', serif;
     --font-display: 'Bayon', sans-serif;
+
+    /* Cursor */
+    --cursor-mask-image: url('/assets/hand-pointer.svg');
+    --cursor-emoji: "🍕";
+    --cursor-glyph-rotate: 180deg;
 }
 
 /* CSS Reset - Remove Browser Defaults */
@@ -53,10 +60,12 @@ body {
     pointer-events: none;
     z-index: 1;
     background-image: url('/assets/grain-overlay.png');
-    background-size: cover;
-    background-position: center;
+    /* Slight oversize so we can drift the texture without revealing edges */
+    background-size: 112% 112%;
+    background-position: center calc(50% + var(--grain-parallax-y, 0px));
     opacity: 0.10;
     mix-blend-mode: screen;
+    will-change: background-position;
 }
 
 header,
@@ -213,7 +222,8 @@ header {
 main {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 24px;
+    column-gap: 24px;
+    row-gap: var(--section-spacing);
     padding: 0 40px;
 }
 
@@ -225,14 +235,13 @@ main > section {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 24px;
-    padding-top: 250px;
-    padding-bottom: 96px;
+    padding: 300px 0;
 }
 
 .intro-star {
     position: fixed;
     left: calc(40px + ((100vw - 200px) / 6) + 24px);
-    top: 229px;
+    top: 272px;
     width: 60px;
     height: 60px;
     z-index: 3;
@@ -294,7 +303,6 @@ main > section {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 24px;
     align-items: baseline;
-    padding-top: 48px;
 }
 
 /* Cards row isn't baseline text-aligned */
@@ -309,10 +317,6 @@ main > section {
     gap: 12px;
 }
 
-.split--top {
-    padding-top: 0;
-}
-
 .section-label {
     font-size: 16px;
     line-height: 1.2;
@@ -321,6 +325,25 @@ main > section {
 
 .split-content {
     grid-column: 4 / -1;
+}
+
+#core-tenets .split-content {
+    grid-column: 2 / -1;
+    width: 100%;
+    max-width: none;
+
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    column-gap: 24px;
+}
+
+#core-tenets .section-label {
+    grid-column: 2;
+    margin-bottom: 24px;
+}
+
+#core-tenets .tenet {
+    grid-column: 1 / -1;
 }
 
 .ask-row {
@@ -345,8 +368,11 @@ main > section {
     display: flex;
     gap: 24px;
     overflow-x: auto;
+    overflow-y: visible;
+    padding-top: 6px;
     padding-bottom: 8px;
     scroll-snap-type: x mandatory;
+
 
     /* Ask-me-about alignment: first card starts under the title */
     padding-left: var(--ask-left, 0px);
@@ -406,6 +432,23 @@ main > section {
     overflow: hidden;
     background: transparent;
     scroll-snap-align: start;
+
+    transition: transform 220ms cubic-bezier(0.2, 0.0, 0.0, 1), background-color 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .card {
+        cursor: pointer;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        background: rgb(var(--color-foreground-rgb) / 6%);
+    }
+
+    .card:hover .card-visual svg {
+        opacity: 1;
+    }
 }
 
 .card-visual {
@@ -440,11 +483,13 @@ main > section {
 
 .tenet {
     font-family: var(--font-display);
-    font-size: 208px;
-    line-height: 0.95;
+    font-size: 14.5vw;
+    line-height: 80%;
     font-weight: 400;
     letter-spacing: 0;
     margin-top: 280px;
+    width: 100%;
+    max-width: none;
 }
 
 .tenet:first-child {
@@ -543,43 +588,109 @@ footer > * {
     border: 1px solid var(--color-foreground);
 }
 
-body.is-big-cursor,
-body.is-big-cursor .footer-pill {
-    cursor: none;
-}
-
-.big-pointer-cursor {
+.site-cursor {
     position: fixed;
     left: -9999px;
     top: -9999px;
     width: 140px;
     height: 140px;
     pointer-events: none;
-    opacity: 0;
-    z-index: 10000;
-    transform: rotate(-20deg);
-    --cursor-tip-x: 56px;
-    --cursor-tip-y: 12px;
-    transform-origin: var(--cursor-tip-x) var(--cursor-tip-y);
-    transition: opacity 0.12s;
-
-    background: var(--color-foreground);
-    mix-blend-mode: difference;
-
-    -webkit-mask-image: url("/assets/hand-pointer.svg");
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    -webkit-mask-size: contain;
-
-    mask-image: url("/assets/hand-pointer.svg");
-    mask-repeat: no-repeat;
-    mask-position: center;
-    mask-size: contain;
-}
-
-body.is-big-cursor .big-pointer-cursor {
     opacity: 1;
+    z-index: 10000;
+
+    --cursor-scale: 0.22;
+    --cursor-rotate: 0deg;
+    --cursor-tip-x: 30px;
+    --cursor-tip-y: 16px;
+    transform-origin: 0 0;
+
+    transform: rotate(var(--cursor-rotate)) scale(var(--cursor-scale));
+    transition: opacity 160ms ease;
 }
+
+@keyframes cursor-bounce-in {
+    0% {
+        transform: rotate(var(--cursor-rotate)) scale(0.22);
+    }
+    65% {
+        transform: rotate(var(--cursor-rotate)) scale(1.04);
+    }
+    100% {
+        transform: rotate(var(--cursor-rotate)) scale(1);
+    }
+}
+
+@keyframes cursor-bounce-out {
+    0% {
+        transform: rotate(var(--cursor-rotate)) scale(1);
+    }
+    70% {
+        transform: rotate(var(--cursor-rotate)) scale(0.20);
+    }
+    100% {
+        transform: rotate(var(--cursor-rotate)) scale(0.22);
+    }
+}
+
+.site-cursor::before {
+    content: var(--cursor-emoji);
+    display: block;
+    width: 140px;
+    height: 140px;
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+    font-size: 140px;
+    line-height: 140px;
+    transform: rotate(var(--cursor-glyph-rotate));
+    transform-origin: 50% 50%;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    body.has-custom-cursor:not(.show-native-cursor),
+    body.has-custom-cursor:not(.show-native-cursor) * {
+        cursor: none !important;
+    }
+
+    body.has-custom-cursor.show-native-cursor,
+    body.has-custom-cursor.show-native-cursor * {
+        cursor: auto !important;
+    }
+}
+
+@media (hover: hover) and (pointer: fine) {
+    body.has-custom-cursor:not(.cursor--big) .site-cursor {
+        animation: cursor-bounce-out 220ms cubic-bezier(0.25, 1.25, 0.5, 1) both;
+    }
+
+    body.cursor--hand .site-cursor {
+        --cursor-emoji: "👆";
+        --cursor-glyph-rotate: 0deg;
+    }
+
+    body.cursor--email-horns .site-cursor {
+        --cursor-emoji: "🤘";
+        --cursor-glyph-rotate: 0deg;
+        /* Adjustable: horns hotspot (non-big, usually not visible) */
+        --cursor-tip-x: 30px;
+        --cursor-tip-y: 16px;
+    }
+
+    body.cursor--big:not(.cursor--email-horns) .site-cursor {
+        --cursor-scale: 1;
+        /* Big state hotspot tweak: ~10px up and to the right */
+        --cursor-tip-x: 50px;
+        --cursor-tip-y: 0px;
+        animation: cursor-bounce-in 260ms cubic-bezier(0.25, 1.25, 0.5, 1) both;
+    }
+
+    body.cursor--email-horns.cursor--big .site-cursor {
+        --cursor-scale: 1;
+        /* Adjustable: horns hotspot (big) */
+        --cursor-tip-x: 100px;
+        --cursor-tip-y: 0px;
+        animation: cursor-bounce-in 260ms cubic-bezier(0.25, 1.25, 0.5, 1) both;
+    }
+}
+
 
 /* Light mode */
 body.light-mode {
