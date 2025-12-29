@@ -13,7 +13,7 @@
     --section-spacing: 96px;
 
     /* Typography */
-    --font-primary: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    --font-primary: 'Beatrice', 'Playfair Display', Georgia, 'Times New Roman', serif;
     --font-secondary: Georgia, 'Times New Roman', serif;
     --font-display: 'Bayon', sans-serif;
 
@@ -52,6 +52,13 @@ body {
     background: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-primary);
+    overflow-x: hidden;
+}
+
+@supports (overflow: clip) {
+    body {
+        overflow-x: clip;
+    }
 }
 
 .grain {
@@ -62,10 +69,9 @@ body {
     background-image: url('/assets/grain-overlay.png');
     /* Slight oversize so we can drift the texture without revealing edges */
     background-size: 112% 112%;
-    background-position: center calc(50% + var(--grain-parallax-y, 0px));
+    background-position: center;
     opacity: 0.10;
     mix-blend-mode: screen;
-    will-change: background-position;
 }
 
 header,
@@ -74,6 +80,13 @@ footer {
     position: relative;
     z-index: 2;
 }
+
+/*
+  Stickers (disabled for now)
+
+  .site-stickers { ... }
+  .site-sticker  { ... }
+*/
 
 img, picture, video, canvas, svg {
     display: block;
@@ -134,47 +147,6 @@ header {
         gap: 24px;
     }
 
-    .theme-toggle {
-        width: 59px;
-        height: 34.54px;
-        padding: 2.88px;
-        border-radius: 57.56px;
-        background: rgba(208, 217, 251, 0.07);
-        color: var(--color-foreground);
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        transition: opacity 0.2s;
-
-        &:hover { opacity: 0.8; }
-
-        .theme-toggle__thumb {
-            width: 28.78px;
-            height: 28.78px;
-            border-radius: 34.54px;
-            background: rgba(0, 0, 0, 0.49);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.25s;
-        }
-
-        svg {
-            transition: opacity 0.2s, transform 0.2s;
-        }
-
-        .sun-icon {
-            opacity: 0;
-            transform: rotate(90deg);
-            position: absolute;
-        }
-
-        .moon-icon {
-            opacity: 1;
-            transform: rotate(0deg);
-        }
-    }
-
     .hamburger {
         flex-direction: column;
         width: 33px;
@@ -233,15 +205,16 @@ main > section {
 
 .intro {
     display: grid;
+    position: relative;
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 24px;
-    padding: 300px 0;
+    padding: 28vh 0;
 }
 
 .intro-star {
     position: fixed;
     left: calc(40px + ((100vw - 200px) / 6) + 24px);
-    top: 272px;
+    top: 28vh;
     width: 60px;
     height: 60px;
     z-index: 3;
@@ -250,11 +223,16 @@ main > section {
 
 .intro-title {
     grid-column: 2 / -1;
+    position: relative;
+    z-index: 1;
     max-width: 963px;
     font-size: 100.8px;
     line-height: 108.5px;
     font-weight: 300;
     letter-spacing: 0;
+
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .intro-em {
@@ -327,7 +305,8 @@ main > section {
     grid-column: 4 / -1;
 }
 
-#core-tenets .split-content {
+#core-tenets .split-content,
+section[aria-label="Core Tenets"] .split-content {
     grid-column: 2 / -1;
     width: 100%;
     max-width: none;
@@ -337,14 +316,147 @@ main > section {
     column-gap: 24px;
 }
 
-#core-tenets .section-label {
+#core-tenets .section-label,
+section[aria-label="Core Tenets"] .section-label {
     grid-column: 2;
     margin-bottom: 24px;
 }
 
-#core-tenets .tenet {
+#core-tenets .tenet-steps,
+section[aria-label="Core Tenets"] .tenet-steps {
     grid-column: 1 / -1;
+    width: 100%;
+    padding-top: 180px;
 }
+
+#core-tenets .tenet-step,
+section[aria-label="Core Tenets"] .tenet-step {
+    position: relative;
+    height: calc(var(--tenet-scroll, 600px) + var(--tenet-height, 0px));
+}
+
+#core-tenets .tenet-gap,
+section[aria-label="Core Tenets"] .tenet-gap {
+    height: 0;
+}
+
+/*
+  Trigger point: the tenet becomes sticky when its top reaches 50vh.
+    Duration: each step uses --tenet-scroll.
+*/
+#core-tenets .tenet-step .tenet,
+section[aria-label="Core Tenets"] .tenet-step .tenet {
+    position: sticky;
+    top: 40vh;
+    margin: 0;
+}
+
+/* First tenet: 10x stacked blur/spread effect (JS inserts spans) */
+#core-tenets .tenet--stack,
+section[aria-label="Core Tenets"] .tenet--stack {
+    position: sticky;
+    top: 40vh;
+    margin: 0;
+    isolation: isolate;
+}
+
+#core-tenets .tenet--stack .tenet-stack__sizer,
+section[aria-label="Core Tenets"] .tenet--stack .tenet-stack__sizer {
+    display: block;
+    opacity: 0;
+}
+
+#core-tenets .tenet--stack .tenet-stack__layer,
+section[aria-label="Core Tenets"] .tenet--stack .tenet-stack__layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    pointer-events: none;
+    will-change: transform, filter, opacity;
+}
+
+/* Tenet 3 lab: 20 horizontal strips that slide into alignment */
+#core-tenets .tenet--strips20,
+section[aria-label="Core Tenets"] .tenet--strips20 {
+    isolation: isolate;
+    position: relative;
+    overflow: visible;
+    width: 100%;
+    margin-left: 0;
+}
+
+#core-tenets .tenet--strips20 .tenet-strips20__sizer,
+section[aria-label="Core Tenets"] .tenet--strips20 .tenet-strips20__sizer {
+    display: block;
+    position: relative;
+    opacity: 0;
+}
+
+
+#core-tenets .tenet--strips20 .tenet-strips20,
+section[aria-label="Core Tenets"] .tenet--strips20 .tenet-strips20 {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: var(--strips20-h, 100%);
+    pointer-events: none;
+}
+
+#core-tenets .tenet--strips20 .tenet-strip20,
+section[aria-label="Core Tenets"] .tenet--strips20 .tenet-strip20 {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: var(--strip20-h, 1em);
+    top: calc(var(--strip20-i, 0) * var(--strip20-h, 1em));
+    overflow: hidden;
+}
+
+#core-tenets .tenet--strips20 .tenet-strip20__text,
+section[aria-label="Core Tenets"] .tenet--strips20 .tenet-strip20__text {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+}
+
+/* Tenet 3 lab (reset): static slicing + 20 BIAS slices above */
+#core-tenets .tenet--strips20 .tenet-biasStack,
+section[aria-label="Core Tenets"] .tenet--strips20 .tenet-biasStack {
+    position: absolute;
+    left: 0;
+    top: calc(var(--bias-h, 0px) * -1);
+    width: 100%;
+    height: var(--bias-h, 0px);
+    pointer-events: none;
+    user-select: none;
+}
+
+#core-tenets .tenet--strips20 .tenet-biasSlice,
+section[aria-label="Core Tenets"] .tenet--strips20 .tenet-biasSlice {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: var(--slice-h, 44px);
+    top: calc(var(--bias-i, 0) * var(--slice-h, 44px));
+    overflow: hidden;
+}
+
+#core-tenets .tenet--strips20 .tenet-biasSlice__visible,
+section[aria-label="Core Tenets"] .tenet--strips20 .tenet-biasSlice__visible {
+    display: block;
+    height: var(--bias-visible, 2px);
+    margin-top: var(--bias-offset, 42px);
+    overflow: hidden;
+}
+
+#core-tenets .tenet--strips20 .tenet-biasSlice__text,
+section[aria-label="Core Tenets"] .tenet--strips20 .tenet-biasSlice__text {
+    display: block;
+}
+
 
 .ask-row {
     grid-column: 1 / -1;
@@ -487,13 +599,8 @@ main > section {
     line-height: 80%;
     font-weight: 400;
     letter-spacing: 0;
-    margin-top: 280px;
     width: 100%;
     max-width: none;
-}
-
-.tenet:first-child {
-    margin-top: 180px;
 }
 
 .timeline-list {
@@ -602,7 +709,8 @@ footer > * {
     --cursor-rotate: 0deg;
     --cursor-tip-x: 30px;
     --cursor-tip-y: 16px;
-    transform-origin: 0 0;
+    /* Pivot scale/rotation around the cursor “tip” so it stays pinned to the pointer. */
+    transform-origin: var(--cursor-tip-x) var(--cursor-tip-y);
 
     transform: rotate(var(--cursor-rotate)) scale(var(--cursor-scale));
     transition: opacity 160ms ease;
@@ -612,8 +720,11 @@ footer > * {
     0% {
         transform: rotate(var(--cursor-rotate)) scale(0.22);
     }
-    65% {
-        transform: rotate(var(--cursor-rotate)) scale(1.04);
+    62% {
+        transform: rotate(var(--cursor-rotate)) scale(1.025);
+    }
+    82% {
+        transform: rotate(var(--cursor-rotate)) scale(0.98);
     }
     100% {
         transform: rotate(var(--cursor-rotate)) scale(1);
@@ -624,8 +735,11 @@ footer > * {
     0% {
         transform: rotate(var(--cursor-rotate)) scale(1);
     }
-    70% {
-        transform: rotate(var(--cursor-rotate)) scale(0.20);
+    68% {
+        transform: rotate(var(--cursor-rotate)) scale(0.19);
+    }
+    86% {
+        transform: rotate(var(--cursor-rotate)) scale(0.235);
     }
     100% {
         transform: rotate(var(--cursor-rotate)) scale(0.22);
@@ -658,7 +772,7 @@ footer > * {
 
 @media (hover: hover) and (pointer: fine) {
     body.has-custom-cursor:not(.cursor--big) .site-cursor {
-        animation: cursor-bounce-out 220ms cubic-bezier(0.25, 1.25, 0.5, 1) both;
+        animation: cursor-bounce-out 230ms cubic-bezier(0.24, 1.35, 0.40, 1) both;
     }
 
     body.cursor--hand .site-cursor {
@@ -679,7 +793,7 @@ footer > * {
         /* Big state hotspot tweak: ~10px up and to the right */
         --cursor-tip-x: 50px;
         --cursor-tip-y: 0px;
-        animation: cursor-bounce-in 260ms cubic-bezier(0.25, 1.25, 0.5, 1) both;
+        animation: cursor-bounce-in 280ms cubic-bezier(0.24, 1.35, 0.40, 1) both;
     }
 
     body.cursor--email-horns.cursor--big .site-cursor {
@@ -687,7 +801,7 @@ footer > * {
         /* Adjustable: horns hotspot (big) */
         --cursor-tip-x: 100px;
         --cursor-tip-y: 0px;
-        animation: cursor-bounce-in 260ms cubic-bezier(0.25, 1.25, 0.5, 1) both;
+        animation: cursor-bounce-in 280ms cubic-bezier(0.24, 1.35, 0.40, 1) both;
     }
 }
 
