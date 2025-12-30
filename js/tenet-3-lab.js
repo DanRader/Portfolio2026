@@ -6,17 +6,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const lerp = (a, b, t) => a + ((b - a) * clamp01(t));
 
     const config = {
-        sliceHeightPx: 60,
-        peakPx: 5,
+        sliceHeightVw: 3.3, // approx 47px @ 1440
+        peakVw: 1.4,        // approx 20px @ 1440
         extraSlices: 20,
         gapExtraPx: 200,
         xOffsetPx: 400,
-        blendVariation: -100,
+        blendVariation: 100,
         jitterX: 100,
-        jitterY: 28,
+        jitterY: 100,
+        exitShiftX: 300,    // Uniform X movement
+        exitRangeX: 50,     // Random scatter on top
+        exitRangeY: 0       // Max Y scatter
     };
 
-    const TENET_SCROLL_PX = 700;
+    const TENET_SCROLL_PX = 800;
 
     const section = document.querySelector('section[aria-label="Core Tenets"]');
     if (!section) return;
@@ -162,15 +165,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const buildPresetString = () => {
-        const s = Math.round(Number(config.sliceHeightPx) || 0);
-        const p = Math.round(Number(config.peakPx) || 0);
+        const s = Number(config.sliceHeightVw) || 0;
+        const p = Number(config.peakVw) || 0;
         const e = Math.round(Number(config.extraSlices) || 0);
         const g = Math.round(Number(config.gapExtraPx) || 0);
         const x = Math.round(Number(config.xOffsetPx) || 0);
         const b = Math.round(Number(config.blendVariation) || 0);
         const jx = Math.round(Number(config.jitterX) || 0);
         const jy = Math.round(Number(config.jitterY) || 0);
-        return `t3(slice=${s},peak=${p},extra=${e},gap=${g},x=${x},blend=${b},jx=${jx},jy=${jy})`;
+        const sx = Math.round(Number(config.exitShiftX) || 0);
+        const ex = Math.round(Number(config.exitRangeX) || 0);
+        const ey = Math.round(Number(config.exitRangeY) || 0);
+        return `t3(slice=${s.toFixed(2)},peak=${p.toFixed(2)},extra=${e},gap=${g},x=${x},blend=${b},jx=${jx},jy=${jy},sx=${sx},ex=${ex},ey=${ey})`;
     };
 
     const parsePresetString = (text) => {
@@ -185,14 +191,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const v = Number(vRaw);
             if (!Number.isFinite(v)) continue;
             switch (k.toLowerCase()) {
-                case 'slice': next.sliceHeightPx = v; break;
-                case 'peak': next.peakPx = v; break;
+                case 'slice': next.sliceHeightVw = v; break;
+                case 'peak': next.peakVw = v; break;
                 case 'extra': next.extraSlices = v; break;
                 case 'gap': next.gapExtraPx = v; break;
                 case 'x': next.xOffsetPx = v; break;
                 case 'blend': next.blendVariation = v; break;
                 case 'jx': next.jitterX = v; break;
                 case 'jy': next.jitterY = v; break;
+                case 'sx': next.exitShiftX = v; break;
+                case 'ex': next.exitRangeX = v; break;
+                case 'ey': next.exitRangeY = v; break;
                 default: break;
             }
         }
@@ -208,13 +217,13 @@ document.addEventListener('DOMContentLoaded', () => {
     title.textContent = 'Tenet 3 Lab (Static Slices)';
     panel.appendChild(title);
 
-    const sliceVal = createValue(`${config.sliceHeightPx}px`);
-    const slice = createRange({ min: 8, max: 120, step: 1, value: config.sliceHeightPx });
-    panel.appendChild(makeControlRow('Slice height', slice, sliceVal));
+    const sliceVal = createValue(`${config.sliceHeightVw}vw`);
+    const slice = createRange({ min: 0.1, max: 10.0, step: 0.1, value: config.sliceHeightVw });
+    panel.appendChild(makeControlRow('Slice height (vw)', slice, sliceVal));
 
-    const peakVal = createValue(`${config.peakPx}px`);
-    const peak = createRange({ min: 0, max: 60, step: 1, value: config.peakPx });
-    panel.appendChild(makeControlRow('Initial peak', peak, peakVal));
+    const peakVal = createValue(`${config.peakVw}vw`);
+    const peak = createRange({ min: 0, max: 10.0, step: 0.1, value: config.peakVw });
+    panel.appendChild(makeControlRow('Initial peak (vw)', peak, peakVal));
 
     const gapVal = createValue(`${config.gapExtraPx}px`);
     const gap = createRange({ min: 0, max: 800, step: 10, value: config.gapExtraPx });
@@ -235,6 +244,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const jitterYVal = createValue(`${config.jitterY}`);
     const jitterY = createRange({ min: 0, max: 100, step: 1, value: config.jitterY });
     panel.appendChild(makeControlRow('Jitter Y', jitterY, jitterYVal));
+
+    const exitShiftXVal = createValue(`${config.exitShiftX}px`);
+    const exitShiftX = createRange({ min: -1000, max: 1000, step: 10, value: config.exitShiftX });
+    panel.appendChild(makeControlRow('Exit Shift X', exitShiftX, exitShiftXVal));
+
+    const exitXVal = createValue(`${config.exitRangeX}px`);
+    const exitXRange = createRange({ min: 0, max: 1000, step: 10, value: config.exitRangeX });
+    panel.appendChild(makeControlRow('Exit Scatter X', exitXRange, exitXVal));
+
+    const exitYVal = createValue(`${config.exitRangeY}px`);
+    const exitYRange = createRange({ min: 0, max: 1000, step: 10, value: config.exitRangeY });
+    panel.appendChild(makeControlRow('Exit Scatter Y', exitYRange, exitYVal));
 
     const presetInput = document.createElement('input');
     presetInput.type = 'text';
@@ -273,6 +294,9 @@ document.addEventListener('DOMContentLoaded', () => {
     biasStack.setAttribute('aria-hidden', 'true');
     tenet.appendChild(biasStack);
 
+    // Helper: Convert VW to PX
+    const vwToPx = (vw) => (vw / 100) * window.innerWidth;
+
     const layoutSteps = () => {
         if (!steps || !tenetStep) return;
 
@@ -281,9 +305,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Push the entire block down by the user-selected gap plus the bias stack height,
         // so tall slices never peek above the reserved space.
-        const sliceHCurrent = Math.max(1, Number(config.sliceHeightPx) || 44);
+        const sliceH = Math.max(1, vwToPx(Number(config.sliceHeightVw) || 3.3));
         const extraCurrent = Math.max(0, Math.min(60, Math.round(Number(config.extraSlices) || 20)));
-        const biasHeight = extraCurrent * sliceHCurrent;
+        const biasHeight = extraCurrent * sliceH;
         const gapExtra = Math.max(0, Number(config.gapExtraPx) || 0);
         const offsetTop = gapExtra + biasHeight;
         steps.style.marginTop = `${offsetTop}px`;
@@ -299,26 +323,95 @@ document.addEventListener('DOMContentLoaded', () => {
             const gapPx = Math.max(0, Math.ceil(stickyTopPx - tenetHeight)) + TENET_SCROLL_PX + gapExtra;
             gap.style.height = `${gapPx}px`;
         }
+
+        cachedStickyTop = stickyTopPx;
+    };
+
+    let animationFrame;
+    let cachedSlices = [];
+    let cachedStickyTop = 0;
+
+    const updateScroll = () => {
+        if (!tenet || !biasStack || !tenetStep) return;
+
+        const vh = window.innerHeight;
+        // Track the parent step to drive animation past the lock point
+        // tenet itself is sticky, so its rect.top locks at cachedStickyTop
+        const rect = tenetStep.getBoundingClientRect();
+
+        const sliceH = Math.max(1, vwToPx(Number(config.sliceHeightVw) || 3.3));
+        const extra = Math.max(0, Math.min(60, Math.round(Number(config.extraSlices) || 20)));
+        const biasHeight = extra * sliceH;
+
+        // Animation Logic:
+        // Start: When the visual top of the stack (rect.top - biasHeight) enters the viewport bottom.
+        // End: When the element hits its lock/end position.
+        // We delay the end by 1/3 viewport height into the zero state.
+
+        // Use tenetStep for tracking. 
+        // Start Top: vh + biasHeight
+        // Entry End Top: cachedStickyTop - (vh / 3)
+        // Exit Start: Entry End - 100px (brief hold)
+        // Exit End: Exit Start - 400px (decomposition)
+
+        const animationStartTop = vh + biasHeight;
+        // Entry completes after 300px of scrolling past lock
+        const animationEntryEndTop = cachedStickyTop - 300;
+
+        // Exit starts exactly when we unstick (TENET_SCROLL_PX past lock)
+        // This means it animates AS it scrolls away physically.
+        const animationExitStartTop = cachedStickyTop - TENET_SCROLL_PX;
+
+        // Exit completes when the tenet is fully off-screen.
+        // Distance to travel = current position (cachedStickyTop) to fully off-screen (-height)
+        const tenetHeight = tenet.offsetHeight || 0;
+        const exitDuration = cachedStickyTop + tenetHeight;
+        const animationExitEndTop = animationExitStartTop - exitDuration;
+
+        const currentTop = rect.top; // tenetStep's top
+
+        const entryDist = animationStartTop - animationEntryEndTop;
+        const entryTraveled = animationStartTop - currentTop;
+        const pEntry = entryDist > 0 ? clamp01(entryTraveled / entryDist) : 1;
+
+        const exitDist = animationExitStartTop - animationExitEndTop;
+        const exitTraveled = animationExitStartTop - currentTop;
+        const pExit = exitDist > 0 ? clamp01(exitTraveled / exitDist) : 0;
+
+        // Ease In Curve for Entry
+        const tEntry = Math.pow(pEntry, 2);
+        // Linear or smoothstep for Exit
+        const tExit = pExit;
+
+        // Apply to all cached slices
+        for (const slice of cachedSlices) {
+            if (slice.el) {
+                // Phase 1: Start -> End (Clean)
+                let currentX = lerp(slice.startX, slice.endX, tEntry);
+                let currentY = lerp(slice.startY, slice.endY, tEntry);
+
+                // Phase 2: End -> Exit (if entering exit phase)
+                if (pExit > 0) {
+                    currentX = lerp(slice.endX, slice.exitX, tExit);
+                    currentY = lerp(slice.endY, slice.exitY, tExit);
+                }
+
+                slice.el.style.transform = `translate(${currentX.toFixed(2)}px, ${currentY.toFixed(2)}px)`;
+            }
+        }
     };
 
     const rebuild = () => {
-        const sliceH = Math.max(1, Number(config.sliceHeightPx) || 44);
+        const sliceH = Math.max(1, vwToPx(Number(config.sliceHeightVw) || 3.3));
         const extra = Math.max(0, Math.min(60, Math.round(Number(config.extraSlices) || 20)));
-        const peakPx = clamp(Number(config.peakPx) || 0, 0, sliceH);
-
-        const blendT = (t) => {
-            const v = Math.max(-100, Math.min(100, Number(config.blendVariation) || 0));
-            const mag = Math.abs(v) / 100;
-            const exp = 1 + (mag * 2); // 1..3
-            if (v > 0) return Math.pow(t, exp); // holds low, catches up late
-            if (v < 0) return 1 - Math.pow(1 - t, exp); // jumps early, eases out
-            return t;
-        };
+        const peakPx = vwToPx(Number(config.peakVw) || 0); // No clamping against sliceH here, flexible
 
         // Phrase slices
         const rect = phraseSizer.getBoundingClientRect();
         const phraseH = Math.max(1, rect.height);
-        const phraseCount = Math.max(1, Math.ceil(phraseH / sliceH));
+        // Add 1 safety slice to prevent subpixel clipping
+        const phraseCount = Math.max(1, Math.ceil(phraseH / sliceH) + 1);
+        const totalSlices = extra + phraseCount;
 
         tenet.style.setProperty('--slice-h', `${sliceH.toFixed(2)}px`);
         tenet.style.setProperty('--strip20-h', `${sliceH.toFixed(2)}px`);
@@ -327,6 +420,22 @@ document.addEventListener('DOMContentLoaded', () => {
         tenet.style.setProperty('--bias-h', `${(extra * sliceH).toFixed(2)}px`);
 
         phraseStrips.textContent = '';
+        const newHelperSlices = [];
+        let lastStartX = -9999;
+
+        const blendT = (t) => {
+            const v = Math.max(-100, Math.min(100, Number(config.blendVariation) || 0));
+            const mag = Math.abs(v) / 100;
+            const exp = 1 + (mag * 2);
+            if (v > 0) return Math.pow(t, exp);
+            if (v < 0) return 1 - Math.pow(1 - t, exp);
+            return t;
+        };
+
+        const exitShiftX = Number(config.exitShiftX) || 0;
+        const exitRangeX = Number(config.exitRangeX) || 0;
+        const exitRangeY = Number(config.exitRangeY) || 0;
+
         for (let i = 0; i < phraseCount; i += 1) {
             const row = document.createElement('span');
             row.className = 'tenet-strip20';
@@ -337,50 +446,99 @@ document.addEventListener('DOMContentLoaded', () => {
             inner.innerHTML = originalHtml;
             // Normal slicing: each strip shows its own band.
             inner.style.top = `${(-i * sliceH).toFixed(2)}px`;
-            row.appendChild(inner);
 
-            const tRaw = phraseCount <= 1 ? 1 : (i / (phraseCount - 1));
+            row.appendChild(inner);
+            phraseStrips.appendChild(row);
+
+            // Calculate Start State
+            const globalIndex = extra + i;
+            const tRaw = totalSlices <= 1 ? 1 : (globalIndex / (totalSlices - 1));
+
             const tVar = blendT(tRaw);
             const jitterXN = Math.max(0, Math.min(100, Number(config.jitterX) || 0)) / 100;
             const jitterYN = Math.max(0, Math.min(100, Number(config.jitterY) || 0)) / 100;
             const jitterRangeX = 0.35 * jitterXN;
             const jitterRangeY = 0.35 * jitterYN;
-            const jitterFalloff = 1 - tVar; // taper jitter to 0 at the bottom slice
+            const jitterFalloff = 1 - tVar;
             const jitterDeltaX = (Math.random() * 2 - 1) * jitterRangeX * jitterFalloff;
             const jitterDeltaY = (Math.random() * 2 - 1) * jitterRangeY * jitterFalloff;
             const tJitteredX = clamp01(tVar + jitterDeltaX);
-            const tJitteredY = clamp01(tVar + jitterDeltaY);
 
-            const xOffset = lerp(config.xOffsetPx, 0, tJitteredX);
-            const yOffset = jitterDeltaY * sliceH;
-            row.style.transform = `translate(${xOffset.toFixed(2)}px, ${yOffset.toFixed(2)}px)`;
+            let minX = Math.sign(config.xOffsetPx) * Math.min(Math.abs(config.xOffsetPx), 20);
+            let startX = lerp(config.xOffsetPx, minX, tJitteredX);
 
-            phraseStrips.appendChild(row);
+            // Retry if too close to previous
+            if (config.jitterX > 0) {
+                let attempts = 0;
+                while (Math.abs(startX - lastStartX) < 10 && attempts < 5) {
+                    const newDelta = (Math.random() * 2 - 1) * jitterRangeX * (1 - tVar);
+                    const newT = clamp01(tVar + newDelta);
+                    startX = lerp(config.xOffsetPx, minX, newT);
+                    attempts++;
+                }
+                // Force offset if still too close
+                if (Math.abs(startX - lastStartX) < 10) {
+                    startX += 15;
+                }
+            }
+            lastStartX = startX;
+            const startY = jitterDeltaY * sliceH;
+
+            // Exit State
+            // Shift + Scatter
+            const exitX = exitShiftX + (Math.random() * exitRangeX);
+            const exitY = (Math.random() * 2 - 1) * exitRangeY;
+
+            // Phrase slices end at 0,0
+            newHelperSlices.push({ el: inner, startX, startY, endX: 0, endY: 0, exitX, exitY });
         }
 
         // Bias extra slices above
         biasStack.textContent = '';
         for (let i = 0; i < extra; i += 1) {
-            const tRaw = extra <= 1 ? 1 : (i / (extra - 1));
+            const globalIndex = i;
+            const tRaw = totalSlices <= 1 ? 1 : (globalIndex / (totalSlices - 1));
+
             const tVar = blendT(tRaw);
             const jitterXN = Math.max(0, Math.min(100, Number(config.jitterX) || 0)) / 100;
             const jitterYN = Math.max(0, Math.min(100, Number(config.jitterY) || 0)) / 100;
-            const jitterRangeX = 0.35 * jitterXN; // cap jitter so it disrupts without exploding
+            const jitterRangeX = 0.35 * jitterXN;
             const jitterRangeY = 0.35 * jitterYN;
+
             const jitterDeltaX = (Math.random() * 2 - 1) * jitterRangeX;
             const jitterDeltaY = (Math.random() * 2 - 1) * jitterRangeY;
             const tJitteredX = clamp01(tVar + jitterDeltaX);
             const tJitteredY = clamp01(tVar + jitterDeltaY);
 
             const visible = lerp(peakPx, sliceH, tJitteredY);
-            const xOffset = lerp(config.xOffsetPx, 0, tJitteredX);
+
+            // For bias slices, we only animate X offset.
+            const minX = Math.sign(config.xOffsetPx) * Math.min(Math.abs(config.xOffsetPx), 20);
+            let startX = lerp(config.xOffsetPx, minX, tJitteredX);
+
+            // Retry if too close to previous
+            if (config.jitterX > 0) {
+                let attempts = 0;
+                while (Math.abs(startX - lastStartX) < 10 && attempts < 5) {
+                    const newDelta = (Math.random() * 2 - 1) * jitterRangeX;
+                    const newT = clamp01(tVar + newDelta);
+                    startX = lerp(config.xOffsetPx, minX, newT);
+                    attempts++;
+                }
+                if (Math.abs(startX - lastStartX) < 10) {
+                    startX += 15;
+                }
+            }
+            lastStartX = startX;
+            const startY = 0;
+            // Bias slices end at visible height (move DOWN)
+            const endY = visible;
 
             const row = document.createElement('span');
             row.className = 'tenet-biasSlice';
             row.style.setProperty('--bias-i', String(i));
             row.style.setProperty('--bias-visible', `${visible.toFixed(2)}px`);
             row.style.setProperty('--bias-offset', `${(sliceH - visible).toFixed(2)}px`);
-            row.style.transform = `translateX(${xOffset.toFixed(2)}px)`;
 
             const visibleWrap = document.createElement('span');
             visibleWrap.className = 'tenet-biasSlice__visible';
@@ -392,30 +550,35 @@ document.addEventListener('DOMContentLoaded', () => {
             visibleWrap.appendChild(text);
             row.appendChild(visibleWrap);
             biasStack.appendChild(row);
+
+            // Exit State
+            const exitX = exitShiftX + (Math.random() * exitRangeX);
+            const exitY = (Math.random() * 2 - 1) * exitRangeY;
+
+            newHelperSlices.push({ el: text, startX, startY, endX: 0, endY, exitX, exitY });
         }
 
-        // Update peak slider max to keep it intuitive relative to slice height.
-        peak.max = String(Math.max(0, Math.round(sliceH)));
+        cachedSlices = newHelperSlices;
+
+        // Peak can be larger than slice, but update UI range to meaningful max
+        peak.max = '10.0';
 
         // Keep preset text in sync with current settings.
         presetInput.value = buildPresetString();
 
         layoutSteps();
+        updateScroll();
     };
 
     slice.addEventListener('input', () => {
-        config.sliceHeightPx = Number(slice.value) || config.sliceHeightPx;
-        sliceVal.textContent = `${Math.round(config.sliceHeightPx)}px`;
-        // Keep peak clamped so blends remain smooth.
-        config.peakPx = clamp(Number(config.peakPx) || 0, 0, Number(config.sliceHeightPx) || 44);
-        peak.value = String(config.peakPx);
-        peakVal.textContent = `${Math.round(config.peakPx)}px`;
+        config.sliceHeightVw = Number(slice.value) || 0;
+        sliceVal.textContent = `${config.sliceHeightVw.toFixed(1)}vw`;
         rebuild();
     });
 
     peak.addEventListener('input', () => {
-        config.peakPx = Number(peak.value) || 0;
-        peakVal.textContent = `${Math.round(config.peakPx)}px`;
+        config.peakVw = Number(peak.value) || 0;
+        peakVal.textContent = `${config.peakVw.toFixed(1)}vw`;
         rebuild();
     });
 
@@ -449,23 +612,44 @@ document.addEventListener('DOMContentLoaded', () => {
         rebuild();
     });
 
+    exitShiftX.addEventListener('input', () => {
+        config.exitShiftX = Number(exitShiftX.value) || 0;
+        exitShiftXVal.textContent = `${Math.round(config.exitShiftX)}px`;
+        rebuild();
+    });
+
+    exitXRange.addEventListener('input', () => {
+        config.exitRangeX = Number(exitXRange.value) || 0;
+        exitXVal.textContent = `${Math.round(config.exitRangeX)}px`;
+        rebuild();
+    });
+
+    exitYRange.addEventListener('input', () => {
+        config.exitRangeY = Number(exitYRange.value) || 0;
+        exitYVal.textContent = `${Math.round(config.exitRangeY)}px`;
+        rebuild();
+    });
+
     presetApply.addEventListener('click', () => {
         const parsed = parsePresetString(presetInput.value || '');
         if (!parsed) return;
 
-        if (parsed.sliceHeightPx !== undefined) config.sliceHeightPx = parsed.sliceHeightPx;
-        if (parsed.peakPx !== undefined) config.peakPx = parsed.peakPx;
+        if (parsed.sliceHeightVw !== undefined) config.sliceHeightVw = parsed.sliceHeightVw;
+        if (parsed.peakVw !== undefined) config.peakVw = parsed.peakVw;
         if (parsed.extraSlices !== undefined) config.extraSlices = parsed.extraSlices;
         if (parsed.gapExtraPx !== undefined) config.gapExtraPx = parsed.gapExtraPx;
         if (parsed.xOffsetPx !== undefined) config.xOffsetPx = parsed.xOffsetPx;
         if (parsed.blendVariation !== undefined) config.blendVariation = parsed.blendVariation;
         if (parsed.jitterX !== undefined) config.jitterX = parsed.jitterX;
         if (parsed.jitterY !== undefined) config.jitterY = parsed.jitterY;
+        if (parsed.exitShiftX !== undefined) config.exitShiftX = parsed.exitShiftX;
+        if (parsed.exitRangeX !== undefined) config.exitRangeX = parsed.exitRangeX;
+        if (parsed.exitRangeY !== undefined) config.exitRangeY = parsed.exitRangeY;
 
-        slice.value = String(config.sliceHeightPx);
-        sliceVal.textContent = `${Math.round(config.sliceHeightPx)}px`;
-        peak.value = String(config.peakPx);
-        peakVal.textContent = `${Math.round(config.peakPx)}px`;
+        slice.value = String(config.sliceHeightVw);
+        sliceVal.textContent = `${config.sliceHeightVw.toFixed(1)}vw`;
+        peak.value = String(config.peakVw);
+        peakVal.textContent = `${config.peakVw.toFixed(1)}vw`;
         gap.value = String(config.gapExtraPx);
         gapVal.textContent = `${Math.round(config.gapExtraPx)}px`;
         offset.value = String(config.xOffsetPx);
@@ -476,11 +660,25 @@ document.addEventListener('DOMContentLoaded', () => {
         jitterXVal.textContent = `${Math.round(config.jitterX)}`;
         jitterY.value = String(config.jitterY);
         jitterYVal.textContent = `${Math.round(config.jitterY)}`;
+        exitShiftX.value = String(config.exitShiftX);
+        exitShiftXVal.textContent = `${Math.round(config.exitShiftX)}px`;
+        exitXRange.value = String(config.exitRangeX);
+        exitXVal.textContent = `${Math.round(config.exitRangeX)}px`;
+        exitYRange.value = String(config.exitRangeY);
+        exitYVal.textContent = `${Math.round(config.exitRangeY)}px`;
 
         rebuild();
     });
 
-    window.addEventListener('resize', rebuild);
+    window.addEventListener('resize', () => {
+        layoutSteps();
+        rebuild(); // Need to rebuild coordinates on resize now due to VW
+    });
+
+    window.addEventListener('scroll', () => {
+        if (animationFrame) cancelAnimationFrame(animationFrame);
+        animationFrame = requestAnimationFrame(updateScroll);
+    }, { passive: true });
 
     rebuild();
 });
