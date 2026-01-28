@@ -1,142 +1,14 @@
 // Main JavaScript file
 
-// Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Website loaded successfully!');
-
-    // Grain parallax disabled (performance): keep the grain texture static.
 
     const finePointer = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
     /*
-    // Stickers: click or drag anywhere in the scroll root to stamp random emoji.
-    const stickerRoot = document.querySelector('#infinite-scroll-root');
-    if (finePointer && stickerRoot) {
-        const stickerLayer = document.createElement('div');
-        stickerLayer.className = 'site-stickers';
-        stickerLayer.setAttribute('aria-hidden', 'true');
-        stickerRoot.appendChild(stickerLayer);
-
-        const EMOJIS = [
-            '✨',
-            '⭐️',
-            '🌟',
-            '💥',
-            '💫',
-            '🪩',
-            '🫧',
-            '🍕',
-            '🧠',
-            '🧩',
-            '🛸',
-            '🎈',
-            '🧃',
-            '🖍️',
-            '🪐',
-            '🧸',
-            '🧨',
-            '🎯',
-            '🫶',
-        ];
-
-        const rand = (min, max) => min + (Math.random() * (max - min));
-        const pick = (list) => list[Math.floor(Math.random() * list.length)];
-
-        let stickerZ = 10;
-        let isStamping = false;
-        let lastClientX = 0;
-        let lastClientY = 0;
-        let lastStampT = 0;
-
-        const MIN_STAMP_DIST_PX = 32;
-        const MIN_STAMP_MS = 50;
-
-        // Dragging can generate a lot of stickers; throttle it more aggressively.
-        const MIN_DRAG_STAMP_DIST_PX = 112;
-        const MIN_DRAG_STAMP_MS = 180;
-        const MAX_STICKERS = 220;
-
-        const isInteractiveTarget = (target) =>
-            !!(target && target.closest && target.closest('a, button, input, textarea, select, label'));
-
-        const stampAt = (clientX, clientY) => {
-            const rect = stickerRoot.getBoundingClientRect();
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
-            if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
-
-            const sticker = document.createElement('div');
-            sticker.className = 'site-sticker';
-            sticker.textContent = pick(EMOJIS);
-
-            const sizePx = Math.round(rand(28, 140));
-            const rotateDeg = rand(-90, 90);
-            const flip = Math.random() < 0.35 ? -1 : 1;
-            const scale = rand(0.85, 1.15);
-
-            sticker.style.left = `${x}px`;
-            sticker.style.top = `${y}px`;
-            sticker.style.zIndex = `${++stickerZ}`;
-            sticker.style.fontSize = `${sizePx}px`;
-            sticker.style.setProperty('--sticker-rotate', `${rotateDeg.toFixed(1)}deg`);
-            sticker.style.setProperty('--sticker-flip', `${flip}`);
-            sticker.style.setProperty('--sticker-scale', `${scale.toFixed(2)}`);
-
-            stickerLayer.appendChild(sticker);
-
-            // Prevent the hero from getting slower over time by keeping DOM size bounded.
-            while (stickerLayer.childElementCount > MAX_STICKERS) {
-                stickerLayer.removeChild(stickerLayer.firstElementChild);
-            }
-        };
-
-        const stopStamping = (e) => {
-            if (!isStamping) return;
-            isStamping = false;
-            try {
-                stickerRoot.releasePointerCapture(e.pointerId);
-            } catch {
-                // ignore
-            }
-        };
-
-        stickerRoot.addEventListener('pointerdown', (e) => {
-            if (e.button !== 0) return;
-            if (isInteractiveTarget(e.target)) return;
-
-            isStamping = true;
-            lastClientX = e.clientX;
-            lastClientY = e.clientY;
-            lastStampT = window.performance ? window.performance.now() : Date.now();
-
-            stickerRoot.setPointerCapture(e.pointerId);
-            stampAt(e.clientX, e.clientY);
-        });
-
-        stickerRoot.addEventListener('pointermove', (e) => {
-            if (!isStamping) return;
-
-            const now = window.performance ? window.performance.now() : Date.now();
-            const dx = e.clientX - lastClientX;
-            const dy = e.clientY - lastClientY;
-            const dist2 = (dx * dx) + (dy * dy);
-            const minDist2 = MIN_DRAG_STAMP_DIST_PX * MIN_DRAG_STAMP_DIST_PX;
-
-            if (dist2 < minDist2 && (now - lastStampT) < MIN_DRAG_STAMP_MS) return;
-
-            stampAt(e.clientX, e.clientY);
-            lastClientX = e.clientX;
-            lastClientY = e.clientY;
-            lastStampT = now;
-        });
-
-        stickerRoot.addEventListener('pointerup', stopStamping);
-        stickerRoot.addEventListener('pointercancel', stopStamping);
-        stickerRoot.addEventListener('lostpointercapture', () => {
-            isStamping = false;
-        });
-    }
-    */
+     * Stickers: click or drag anywhere in the scroll root to stamp random emoji.
+     * (Keeping this commented for now to keep the launch lightweight.)
+     */
 
     // Custom hand cursor (Font Awesome masked) + smooth transitions between states
     if (finePointer) {
@@ -189,22 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const onMove = (e) => {
-            // Radial rotation: make the cursor's *bottom* (down direction) face the
-            // viewport center.
-            const vw = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
-            const vh = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
-            const cx = vw / 2;
-            const cy = vh / 2;
-
-            const dx = cx - e.clientX;
-            const dy = cy - e.clientY;
-
-            // atan2 gives angle from +X; subtract 90deg so +Y (down) points toward center.
-            const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI - 90;
-            cursor.style.setProperty('--cursor-rotate', `${angleDeg.toFixed(2)}deg`);
-
-            // Keep the cursor "tip" pinned to the system pointer.
-            // We set CSS transform-origin to the tip point, so rotation/scale happen around it.
+            // Keep the cursor "tip" pinned to the system pointer (no rotation).
             cursor.style.left = `${e.clientX - tipX}px`;
             cursor.style.top = `${e.clientY - tipY}px`;
         };
@@ -261,355 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 handReleaseTimer = 0;
             }, HAND_RELEASE_DELAY_MS);
-        });
-    }
-
-    // Core Tenets: each tenet sticks for TENET_SCROLL_PX when its top hits the vertical center.
-    // NOTE: infinite scroll clones remove IDs, so we target aria-label and re-init on DOM mutations.
-    const TENET_SCROLL_PX = 700;
-    const TENET_EXTRA_GAP_PX = 200;
-
-    // Tenet 1 stack (ported from the Tenet 1 lab defaults).
-    const TENET1 = {
-        negPosPx: 510,
-        zeroHoldPx: 420,
-        layers: 9,
-        spreadPx: 59,
-        startOffsetVh: 20.5,
-        endOpacity: 0.08,
-        negEdgeOpacityDelta: 1,
-        maxBlurPx: 45,
-        negEdgeBlurDeltaPx: -25,
-        stretchX: 0.8,
-        originXPercent: 16,
-        originYPercent: 100,
-        grainEnabled: true,
-        grainFrequency: 1.04,
-        grainScale: 0.95,
-        grainContrast: 1.3,
-    };
-
-    const clamp01 = (v) => Math.max(0, Math.min(1, v));
-    const getTenet1TotalScrollPx = () => {
-        const seg = Math.max(0, Number(TENET1.negPosPx) || 0);
-        const zero = Math.max(0, Number(TENET1.zeroHoldPx) || 0);
-        return Math.max(1, (2 * seg) + zero);
-    };
-    const readStickyTopPx = (el, fallbackPx) => {
-        if (!el) return fallbackPx;
-        const top = window.getComputedStyle(el).top;
-        const px = parseFloat(top);
-        return Number.isFinite(px) ? px : fallbackPx;
-    };
-    const tenetLayoutForSection = (section) => {
-        const halfVh = (window.innerHeight || 0) / 2;
-        const steps = section.querySelector('.tenet-steps');
-        if (!steps) return;
-
-        // Lead-in so the first step starts in the negative state.
-        const firstTenet = steps.querySelector('.tenet-step .tenet');
-        if (firstTenet) {
-            const stickyTopPx = readStickyTopPx(firstTenet, halfVh);
-            steps.style.paddingTop = `${Math.max(0, Math.ceil(stickyTopPx))}px`;
-        }
-
-        const tenet1ScrollPx = getTenet1TotalScrollPx();
-
-        const stepEls = Array.from(steps.querySelectorAll('.tenet-step'));
-        for (const step of stepEls) {
-            const tenet = step.querySelector('.tenet');
-            if (!tenet) continue;
-
-            // Per-step sticky duration: Tenet 1 uses the lab’s 3-phase scroll,
-            // other tenets keep the main-site duration.
-            const isTenet1 = Boolean(step.matches(':first-child'));
-            const scrollPx = isTenet1 ? tenet1ScrollPx : TENET_SCROLL_PX;
-            step.style.setProperty('--tenet-scroll', `${scrollPx}px`);
-
-            const h = Math.ceil(tenet.getBoundingClientRect().height);
-            step.style.setProperty('--tenet-height', `${h}px`);
-
-            // Gap sizing should respect the actual sticky top offset (currently 40vh in CSS).
-            const stickyTopPx = readStickyTopPx(tenet, halfVh);
-
-            const gap = step.nextElementSibling;
-            if (gap && gap.classList && gap.classList.contains('tenet-gap')) {
-                // Ensure the next tenet doesn't enter early: account for sticky duration + spacing.
-                const gapPx = Math.max(0, Math.ceil(stickyTopPx - h)) + scrollPx + TENET_EXTRA_GAP_PX;
-                gap.style.height = `${gapPx}px`;
-            }
-        }
-    };
-
-    const ensureFirstTenetStack = (section) => {
-        const firstTenet = section.querySelector('.tenet-steps .tenet-step:first-child .tenet');
-        if (!firstTenet) return;
-
-        const existingText = (firstTenet.dataset.tenetStackText || '').trim();
-        const initialText = (firstTenet.textContent || '').trim();
-        const text = existingText || initialText;
-        if (!text) return;
-
-        // Only apply the Tenet 1 stack effect to the actual Tenet 1 phrase.
-        // (Prevents the effect from hijacking tenet-2/tenet-3 standalone pages.)
-        if (text.replace(/\s+/g, ' ').trim().toUpperCase() !== 'GIVE A DAMN') return;
-
-        // Rebuild if the layer count changes (or if this is a fresh init).
-        const builtLayers = Number(firstTenet.dataset.tenetStackLayers || 0);
-        if (firstTenet.dataset.tenetStackInit === '1' && builtLayers === TENET1.layers) return;
-
-        firstTenet.dataset.tenetStackInit = '1';
-        firstTenet.dataset.tenetStackText = text;
-        firstTenet.dataset.tenetStackLayers = String(TENET1.layers);
-        firstTenet.classList.add('tenet--stack');
-
-        // Keep one in-flow copy to preserve layout/height and accessibility.
-        firstTenet.textContent = '';
-        const sizer = document.createElement('span');
-        sizer.className = 'tenet-stack__sizer';
-        sizer.textContent = text;
-        firstTenet.appendChild(sizer);
-
-        const origin = `${Math.max(0, Math.min(100, Number(TENET1.originXPercent) || 50))}% ${Math.max(0, Math.min(100, Number(TENET1.originYPercent) || 100))}%`;
-        for (let i = 0; i < TENET1.layers; i += 1) {
-            const layer = document.createElement('span');
-            layer.className = 'tenet-stack__layer';
-            layer.setAttribute('aria-hidden', 'true');
-            layer.textContent = text;
-            layer.style.transformOrigin = origin;
-            firstTenet.appendChild(layer);
-        }
-    };
-
-    const tenetStacks = new Map();
-    const syncTenetStacksIn = (container) => {
-        const tenets = Array.from(container.querySelectorAll('h2.tenet.tenet--stack'));
-        for (const tenet of tenets) {
-            const step = tenet.closest('.tenet-step');
-            if (!step) continue;
-            if (tenetStacks.has(tenet)) continue;
-
-            const layers = Array.from(tenet.querySelectorAll('.tenet-stack__layer'));
-            if (layers.length !== TENET1.layers) continue;
-
-            tenetStacks.set(tenet, {
-                tenet,
-                step,
-                layers,
-            });
-        }
-
-        // Prune removed nodes (infinite scroll deletes copies).
-        for (const [tenet] of tenetStacks) {
-            if (!document.documentElement.contains(tenet)) tenetStacks.delete(tenet);
-        }
-    };
-
-    // --- SVG grain filter wiring (optional; degrades gracefully if missing) ---
-    const TENET_GRAIN_FILTER_ID = 'tenet-grain';
-    const getTenetGrainNodes = () => {
-        const filter = document.getElementById(TENET_GRAIN_FILTER_ID);
-        if (!filter) return null;
-        const turbulence = filter.querySelector('feTurbulence');
-        const grainMix = filter.querySelector('feComposite#tenet-grain-mix');
-        const grainFuncA = filter.querySelector('feFuncA#tenet-grain-contrast-a');
-        const grainDither = filter.querySelector('feComposite#tenet-grain-dither');
-        return { filter, turbulence, grainMix, grainFuncA, grainDither };
-    };
-
-    const updateTenetGrainControls = () => {
-        const nodes = getTenetGrainNodes();
-        if (!nodes) return;
-
-        if (nodes.turbulence) nodes.turbulence.setAttribute('baseFrequency', String(TENET1.grainFrequency));
-        const c = Math.max(0, Number(TENET1.grainContrast) || 0);
-        if (nodes.grainFuncA) nodes.grainFuncA.setAttribute('slope', String(c));
-    };
-
-    const tenetLayerFilter = (blurPx) => {
-        const blurPart = `blur(${Math.max(0, blurPx).toFixed(2)}px)`;
-        if (!TENET1.grainEnabled) return blurPart;
-        if (!document.getElementById(TENET_GRAIN_FILTER_ID)) return blurPart;
-        return `${blurPart} url(#${TENET_GRAIN_FILTER_ID})`;
-    };
-
-    const updateFirstTenetStacks = () => {
-        if (!tenetStacks.size) return;
-        const vh = window.innerHeight || 0;
-        const baseOffsetPx = (vh * TENET1.startOffsetVh) / 100;
-
-        // Keep filter params in sync if the filter exists.
-        updateTenetGrainControls();
-
-        for (const { tenet, step, layers } of tenetStacks.values()) {
-            const stickyTopPx = readStickyTopPx(tenet, vh / 2);
-            const stepTop = step.getBoundingClientRect().top;
-
-            const segPx = Math.max(0, Number(TENET1.negPosPx) || 0);
-            const zeroHoldPx = Math.max(0, Number(TENET1.zeroHoldPx) || 0);
-            const totalScrollPx = Math.max(1, (2 * segPx) + zeroHoldPx);
-
-            const distPx = Math.max(0, Math.min(totalScrollPx, stickyTopPx - stepTop));
-
-            let s;
-            if (segPx <= 0) {
-                if (distPx <= 0) s = -1;
-                else if (distPx < zeroHoldPx) s = 0;
-                else s = 1;
-            } else if (distPx < segPx) {
-                const t = distPx / segPx;
-                s = -1 + t;
-            } else if (distPx < segPx + zeroHoldPx) {
-                s = 0;
-            } else {
-                const t = (distPx - segPx - zeroHoldPx) / segPx;
-                s = Math.max(0, Math.min(1, t));
-            }
-
-            const spread = Math.abs(s);
-            const spreadPos = spread * spread;
-
-            const blurPx = (Number(TENET1.maxBlurPx) || 0) * spread;
-
-            // If grain is enabled and the filter exists, drive strength by blur amount.
-            if (TENET1.grainEnabled) {
-                const nodes = getTenetGrainNodes();
-                if (nodes) {
-                    const maxBlur = Math.max(0.0001, Number(TENET1.maxBlurPx) || 0);
-                    const blurStrength = Math.max(0, Math.min(1, blurPx / maxBlur));
-                    const strength = Math.max(0, Math.min(1, Number(TENET1.grainScale) || 0));
-                    const a = strength * blurStrength;
-
-                    if (nodes.grainDither) nodes.grainDither.setAttribute('k3', String(a.toFixed(4)));
-                    if (nodes.grainMix) {
-                        nodes.grainMix.setAttribute('k2', String((1 - a).toFixed(4)));
-                        nodes.grainMix.setAttribute('k3', String(a.toFixed(4)));
-                    }
-                }
-            }
-
-            const centerIndex = Math.floor((layers.length - 1) / 2);
-
-            const endOpacity = Math.max(0, Math.min(1, Number(TENET1.endOpacity)));
-            const endOpacityFactor = 1 - ((1 - endOpacity) * spread);
-
-            const edgePhase = clamp01(Math.abs(s));
-            const layerCount = Math.max(1, layers.length);
-            const negOpacityDelta = Math.max(-1, Math.min(1, Number(TENET1.negEdgeOpacityDelta) || 0));
-            const negBlurDeltaPx = Number(TENET1.negEdgeBlurDeltaPx) || 0;
-            const maxStretchX = Math.max(0, Number(TENET1.stretchX) || 0);
-
-            for (let i = 0; i < layers.length; i += 1) {
-                const layer = layers[i];
-                const centered = i - ((layers.length - 1) / 2);
-                const t = layerCount <= 1 ? 0 : (i / (layerCount - 1));
-                const y = (centered * (Number(TENET1.spreadPx) || 0) * spreadPos) + (baseOffsetPx * spreadPos);
-
-                const baseOpacity = (i === centerIndex ? 1 : spread) * endOpacityFactor;
-                const negOpacityFactor = clamp01(1 - (t * negOpacityDelta * edgePhase));
-                const opacity = baseOpacity * negOpacityFactor;
-
-                const layerBlurPx = blurPx + (t * negBlurDeltaPx * edgePhase);
-
-                let stretchT;
-                if (s < 0) stretchT = 1 - t;
-                else if (s > 0) stretchT = t;
-                else stretchT = 0;
-                const stretchFactor = 1 + (maxStretchX * edgePhase * clamp01(stretchT));
-
-                layer.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0) scaleX(${stretchFactor.toFixed(4)})`;
-                layer.style.filter = tenetLayerFilter(layerBlurPx);
-                layer.style.opacity = `${opacity.toFixed(3)}`;
-
-                // Ensure we never leave old letter-spacing behind.
-                layer.style.letterSpacing = '';
-            }
-        }
-    };
-
-    const ensureTenetSteps = (section) => {
-        const content = section.querySelector('.split-content');
-        if (!content) return;
-        if (content.querySelector('.tenet-steps')) return;
-
-        const tenets = Array.from(content.querySelectorAll('h2.tenet')).filter((t) => !t.closest('.tenet-steps'));
-        if (!tenets.length) return;
-
-        const steps = document.createElement('div');
-        steps.className = 'tenet-steps';
-        steps.setAttribute('aria-hidden', 'true');
-
-        for (const tenet of tenets) {
-            const step = document.createElement('div');
-            step.className = 'tenet-step';
-            step.appendChild(tenet);
-
-            const gap = document.createElement('div');
-            gap.className = 'tenet-gap';
-            gap.setAttribute('aria-hidden', 'true');
-
-            steps.appendChild(step);
-            steps.appendChild(gap);
-        }
-
-        const label = content.querySelector('.section-label');
-        if (label && label.nextSibling) {
-            content.insertBefore(steps, label.nextSibling);
-        } else {
-            content.appendChild(steps);
-        }
-    };
-
-    const initTenetsIn = (container) => {
-        const sections = Array.from(container.querySelectorAll('section[aria-label="Core Tenets"]'));
-        if (!sections.length) return;
-
-        for (const section of sections) {
-            ensureTenetSteps(section);
-            ensureFirstTenetStack(section);
-            tenetLayoutForSection(section);
-        }
-
-        syncTenetStacksIn(container);
-        updateFirstTenetStacks();
-    };
-
-    const scrollRoot = document.querySelector('#infinite-scroll-root') || document;
-    initTenetsIn(scrollRoot);
-
-    // Drive the first-tenet blur stack with scroll.
-    let tenetAnimRaf = 0;
-    const scheduleTenetAnim = () => {
-        if (tenetAnimRaf) return;
-        tenetAnimRaf = window.requestAnimationFrame(() => {
-            tenetAnimRaf = 0;
-            updateFirstTenetStacks();
-        });
-    };
-    window.addEventListener('scroll', scheduleTenetAnim, { passive: true });
-
-    // Re-init when infinite-scroll adds/removes copies.
-    if (scrollRoot && scrollRoot.nodeType === 1) {
-        let tenetInitRaf = 0;
-        const scheduleTenetInit = () => {
-            if (tenetInitRaf) return;
-            tenetInitRaf = window.requestAnimationFrame(() => {
-                tenetInitRaf = 0;
-                initTenetsIn(scrollRoot);
-            });
-        };
-
-        const mo = new MutationObserver(scheduleTenetInit);
-        mo.observe(scrollRoot, { childList: true, subtree: true });
-
-        let resizeRaf = 0;
-        window.addEventListener('resize', () => {
-            if (resizeRaf) window.cancelAnimationFrame(resizeRaf);
-            resizeRaf = window.requestAnimationFrame(() => {
-                resizeRaf = 0;
-                initTenetsIn(scrollRoot);
-                updateFirstTenetStacks();
-            });
         });
     }
 
@@ -731,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const onPointerUp = (e) => {
                 if (!isPointerDown) return;
                 isPointerDown = false;
-                try { scrollbar.releasePointerCapture(e.pointerId); } catch {}
+                try { scrollbar.releasePointerCapture(e.pointerId); } catch { }
             };
 
             cards.addEventListener('scroll', update, { passive: true });
@@ -769,9 +277,239 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Intro eye tracker (reuses the lab interaction on the hero)
+    const initIntroEye = () => {
+        const eye = document.querySelector('.intro-eye[data-eye]');
+        if (!eye) return;
+
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        const config = {
+            movementScale: 0.16,
+            distancePower: 0.5,
+            distanceBoost: 3,
+            ease: prefersReduced ? 1 : 0.12,
+            leftBias: 2.6,
+            blink: {
+                closeMs: 85,
+                holdMs: 20,
+                openMs: 195,
+                settleMs: 8000,
+                settleJitterPct: 1.0,
+                squashPx: 1,
+                closeEase: 'cubic-bezier(0.42, 0, 0.58, 1)',
+                openEase: 'ease-out',
+            },
+        };
+
+        const layers = Array.from(eye.querySelectorAll('[data-layer]')).map((el) => ({
+            el,
+            depth: Number(el.dataset.depth) || 1,
+            max: Number(el.dataset.max) || 18,
+        }));
+
+        let targetX = 0;
+        let targetY = 0;
+        let currentX = 0;
+        let currentY = 0;
+        let raf = 0;
+
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const lerp = (a, b, t) => a + ((b - a) * t);
+
+        const setLayerTransform = (layer, x, y, scale = 1) => {
+            layer.el.style.setProperty('--layer-x', `${x.toFixed(2)}px`);
+            layer.el.style.setProperty('--layer-y', `${y.toFixed(2)}px`);
+            layer.el.style.setProperty('--layer-scale', scale.toFixed(3));
+        };
+
+        const applyTransforms = () => {
+            const dist = clamp(Math.hypot(currentX, currentY), 0, 1);
+            const distT = Math.pow(dist, clamp(config.distancePower, 0.1, 5));
+            const distBoost = lerp(1, config.distanceBoost, clamp(distT, 0, 1));
+            const scale = config.movementScale * distBoost;
+
+            layers.forEach((layer) => {
+                const moveX = currentX * layer.max * layer.depth;
+                const moveY = currentY * layer.max * layer.depth;
+                setLayerTransform(layer, moveX * scale, moveY * scale, 1);
+            });
+        };
+
+        const tick = () => {
+            const ease = prefersReduced ? 1 : clamp(config.ease, 0.01, 1);
+            currentX = lerp(currentX, targetX, ease);
+            currentY = lerp(currentY, targetY, ease);
+            applyTransforms();
+
+            const settled = Math.abs(currentX - targetX) < 0.001 && Math.abs(currentY - targetY) < 0.001;
+            raf = settled ? 0 : window.requestAnimationFrame(tick);
+        };
+
+        const updateTarget = (clientX, clientY) => {
+            const rect = eye.getBoundingClientRect();
+            const cx = rect.left + (rect.width / 2);
+            const cy = rect.top + (rect.height / 2);
+
+            const vw = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+            const vh = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+            const maxDx = Math.max(cx, vw - cx, 1);
+            const maxDy = Math.max(cy, vh - cy, 1);
+
+            const dx = clientX - cx;
+            const dy = clientY - cy;
+            const dist = Math.hypot(dx, dy);
+
+            let nx = clamp(dx / maxDx, -1, 1);
+            const ny = clamp(dy / maxDy, -1, 1);
+
+            if (nx < 0) nx = clamp(nx * config.leftBias, -1, 1);
+
+            // Elastic attraction when pointer is near the eye
+            const attractRadius = 150;
+            const attractMax = 12; // px translate at closest approach
+            if (dist < attractRadius) {
+                const t = 1 - (dist / attractRadius);
+                const pullX = dist === 0 ? 0 : (dx / dist) * attractMax * t;
+                const pullY = dist === 0 ? 0 : (dy / dist) * attractMax * t;
+                eye.style.transform = `translate(${pullX.toFixed(2)}px, ${pullY.toFixed(2)}px)`;
+            } else {
+                eye.style.transform = '';
+            }
+
+            targetX = nx;
+            targetY = ny;
+            if (!raf) raf = window.requestAnimationFrame(tick);
+        };
+
+        const reset = () => {
+            targetX = 0;
+            targetY = 0;
+            eye.style.transform = '';
+            if (!raf) raf = window.requestAnimationFrame(tick);
+        };
+
+        window.addEventListener('pointermove', (e) => updateTarget(e.clientX, e.clientY), { passive: true });
+        window.addEventListener('pointerleave', reset);
+        window.addEventListener('resize', reset);
+
+        applyTransforms();
+
+        // Blink animation (JS-driven, mirrors eye lab defaults)
+        const blinkTargets = Array.from(eye.querySelectorAll('.eye__mask-shape, .eye__lid-inner'));
+        let blinkTimer = 0;
+        let doubleBlinkTimer = 0;
+        let blinkCount = 0;
+        let nextDoubleAt = 0;
+
+        const stopBlinkLoop = () => {
+            if (blinkTimer) {
+                window.clearTimeout(blinkTimer);
+                blinkTimer = 0;
+            }
+            if (doubleBlinkTimer) {
+                window.clearTimeout(doubleBlinkTimer);
+                doubleBlinkTimer = 0;
+            }
+            blinkTargets.forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
+            eye.getAnimations().forEach((a) => a.cancel());
+        };
+
+        const randomInt = (min, max) => Math.floor(Math.random() * ((max - min) + 1)) + min;
+
+        const resetDoubleSchedule = () => {
+            nextDoubleAt = randomInt(5, 10);
+            blinkCount = 0;
+        };
+
+        const getBlinkDurations = () => {
+            const closeMs = clamp(config.blink.closeMs, 50, 200);
+            const holdMs = clamp(config.blink.holdMs, 0, 200);
+            const openMs = clamp(config.blink.openMs, 80, 320);
+            const settleBase = clamp(config.blink.settleMs, 0, 8000);
+            const settleJitterPct = clamp(config.blink.settleJitterPct, 0, 1);
+            const settleJitter = (Math.random() * 2 - 1) * settleJitterPct;
+            const settleMs = clamp(settleBase + (settleBase * settleJitter), 0, 8000);
+            const total = closeMs + holdMs + openMs + settleMs;
+            return { closeMs, holdMs, openMs, settleMs, total };
+        };
+
+        const playBlinkOnce = (durations = getBlinkDurations()) => {
+            if (!blinkTargets.length) return Promise.resolve();
+
+            const { closeMs, holdMs, openMs, settleMs, total } = durations;
+            const squashPx = clamp(config.blink.squashPx, 0, 20);
+
+            const keyframes = [
+                { transform: 'scaleY(1)', offset: 0, easing: config.blink.closeEase },
+                { transform: 'scaleY(0)', offset: closeMs / total, easing: config.blink.closeEase },
+                { transform: 'scaleY(0)', offset: (closeMs + holdMs) / total, easing: 'linear' },
+                { transform: 'scaleY(1)', offset: (closeMs + holdMs + openMs) / total, easing: config.blink.openEase },
+                { transform: 'scaleY(1)', offset: 1, easing: 'linear' },
+            ];
+
+            const lidAnims = blinkTargets.map((el) => el.animate(keyframes, {
+                duration: total,
+                fill: 'forwards',
+                easing: 'linear',
+            }));
+
+            const squashKeyframes = [
+                { transform: 'translateY(0px)', offset: 0, easing: config.blink.closeEase },
+                { transform: `translateY(${squashPx}px)`, offset: closeMs / total, easing: config.blink.closeEase },
+                { transform: `translateY(${squashPx}px)`, offset: (closeMs + holdMs) / total, easing: 'linear' },
+                { transform: 'translateY(0px)', offset: (closeMs + holdMs + openMs) / total, easing: config.blink.openEase },
+                { transform: 'translateY(0px)', offset: 1, easing: 'linear' },
+            ];
+
+            const squashAnim = eye.animate(squashKeyframes, {
+                duration: total,
+                fill: 'forwards',
+                easing: 'linear',
+            });
+
+            const anims = [...lidAnims, squashAnim];
+
+            return Promise.all(anims.map((a) => a.finished.catch(() => {})));
+        };
+
+        const startBlinkLoop = () => {
+            stopBlinkLoop();
+            if (prefersReduced) return;
+
+            resetDoubleSchedule();
+
+            const loop = () => {
+                const durations = getBlinkDurations();
+                blinkCount += 1;
+                const shouldDouble = blinkCount >= nextDoubleAt;
+                if (shouldDouble) resetDoubleSchedule();
+
+                playBlinkOnce(durations);
+
+                if (shouldDouble) {
+                    const secondDurations = getBlinkDurations();
+                    doubleBlinkTimer = window.setTimeout(() => {
+                        playBlinkOnce(secondDurations);
+                    }, durations.total);
+
+                    blinkTimer = window.setTimeout(loop, durations.total + secondDurations.total);
+                } else {
+                    blinkTimer = window.setTimeout(loop, durations.total);
+                }
+            };
+
+            loop();
+        };
+
+        startBlinkLoop();
+    };
+
+    initIntroEye();
+
     // Hamburger menu functionality
     const hamburger = document.querySelector('.hamburger');
-    
+
     if (hamburger) {
         hamburger.addEventListener('click', () => {
             hamburger.classList.toggle('active');
@@ -815,4 +553,5 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
 });

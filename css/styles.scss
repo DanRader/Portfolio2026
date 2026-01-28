@@ -1,5 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Bayon&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap');
 
 /* CSS Variables */
 :root {
@@ -13,14 +15,14 @@
     --section-spacing: 96px;
 
     /* Typography */
-    --font-primary: 'Beatrice', 'Playfair Display', Georgia, 'Times New Roman', serif;
+    --font-primary: 'Google Sans Flex', 'Bricolage Grotesque', 'Beatrice', 'Playfair Display', Georgia, 'Times New Roman', sans-serif;
     --font-secondary: Georgia, 'Times New Roman', serif;
     --font-display: 'Bayon', sans-serif;
 
     /* Cursor */
     --cursor-mask-image: url('/assets/hand-pointer.svg');
-    --cursor-emoji: "🍕";
-    --cursor-glyph-rotate: 180deg;
+    --cursor-emoji: "";
+    --cursor-glyph-rotate: 0deg;
 }
 
 /* CSS Reset - Remove Browser Defaults */
@@ -52,6 +54,12 @@ body {
     background: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-primary);
+    font-optical-sizing: auto;
+    font-variation-settings:
+      "slnt" 0,
+      "wdth" 100,
+      "GRAD" 0,
+      "ROND" 0;
     overflow-x: hidden;
 }
 
@@ -211,14 +219,23 @@ main > section {
     padding: 28vh 0;
 }
 
-.intro-star {
+.intro-eye {
     position: fixed;
     left: calc(40px + ((100vw - 200px) / 6) + 24px);
     top: 28vh;
-    width: 60px;
-    height: 60px;
+    width: 100px;
     z-index: 3;
     pointer-events: none;
+}
+
+/* Show intro eye only on the source copy; hide in infinite-scroll clones */
+.site-copy:not([data-source="true"]) .intro-eye {
+    display: none;
+}
+
+.intro-eye .eye__svg {
+    width: 100%;
+    height: auto;
 }
 
 .intro-title {
@@ -455,6 +472,33 @@ section[aria-label="Core Tenets"] .tenet--strips20 .tenet-biasSlice__visible {
 #core-tenets .tenet--strips20 .tenet-biasSlice__text,
 section[aria-label="Core Tenets"] .tenet--strips20 .tenet-biasSlice__text {
     display: block;
+}
+
+#core-tenets.tenets-static .split-label,
+section[aria-label="Core Tenets"].tenets-static .split-label {
+    grid-column: 3;
+}
+
+#core-tenets.tenets-static .split-content,
+section[aria-label="Core Tenets"].tenets-static .split-content {
+    grid-column: 4 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.tenets-simple {
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-spacing);
+}
+
+.tenet-heading {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 8vw, 112px);
+    line-height: 0.92;
+    font-weight: 400;
+    text-transform: uppercase;
 }
 
 
@@ -699,63 +743,73 @@ footer > * {
     position: fixed;
     left: -9999px;
     top: -9999px;
-    width: 140px;
-    height: 140px;
+    width: 40px;
+    height: 40px;
     pointer-events: none;
     opacity: 1;
     z-index: 10000;
 
-    --cursor-scale: 0.22;
+    --cursor-scale: 1;
     --cursor-rotate: 0deg;
-    --cursor-tip-x: 30px;
-    --cursor-tip-y: 16px;
-    /* Pivot scale/rotation around the cursor “tip” so it stays pinned to the pointer. */
+    --cursor-tip-x: 6px;
+    --cursor-tip-y: 6px;
+    --cursor-image: url('/assets/Dancursor40.svg');
+    --cursor-emoji-visible: 0;
+    --cursor-emoji-size: 60px;
+
+    background-image: var(--cursor-image);
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+    /* Pivot scale/rotation around the cursor tip so it stays pinned to the pointer. */
     transform-origin: var(--cursor-tip-x) var(--cursor-tip-y);
 
     transform: rotate(var(--cursor-rotate)) scale(var(--cursor-scale));
-    transition: opacity 160ms ease;
+    transition: opacity 160ms ease, transform 180ms ease;
 }
 
 @keyframes cursor-bounce-in {
     0% {
-        transform: rotate(var(--cursor-rotate)) scale(0.22);
+        transform: rotate(var(--cursor-rotate)) scale(0.72);
     }
     62% {
-        transform: rotate(var(--cursor-rotate)) scale(1.025);
+        transform: rotate(var(--cursor-rotate)) scale(2.05);
     }
     82% {
-        transform: rotate(var(--cursor-rotate)) scale(0.98);
+        transform: rotate(var(--cursor-rotate)) scale(1.55);
     }
     100% {
-        transform: rotate(var(--cursor-rotate)) scale(1);
+        transform: rotate(var(--cursor-rotate)) scale(var(--cursor-scale));
     }
 }
 
 @keyframes cursor-bounce-out {
     0% {
-        transform: rotate(var(--cursor-rotate)) scale(1);
+        transform: rotate(var(--cursor-rotate)) scale(1.80);
     }
     68% {
-        transform: rotate(var(--cursor-rotate)) scale(0.19);
+        transform: rotate(var(--cursor-rotate)) scale(0.90);
     }
     86% {
-        transform: rotate(var(--cursor-rotate)) scale(0.235);
+        transform: rotate(var(--cursor-rotate)) scale(1.05);
     }
     100% {
-        transform: rotate(var(--cursor-rotate)) scale(0.22);
+        transform: rotate(var(--cursor-rotate)) scale(var(--cursor-scale));
     }
 }
 
 .site-cursor::before {
     content: var(--cursor-emoji);
-    display: block;
-    width: 140px;
-    height: 140px;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
-    font-size: 140px;
-    line-height: 140px;
-    transform: rotate(var(--cursor-glyph-rotate));
-    transform-origin: 50% 50%;
+    font-size: var(--cursor-emoji-size);
+    line-height: 1;
+    opacity: var(--cursor-emoji-visible);
+    transition: opacity 120ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -772,36 +826,34 @@ footer > * {
 
 @media (hover: hover) and (pointer: fine) {
     body.has-custom-cursor:not(.cursor--big) .site-cursor {
+        --cursor-scale: 1;
         animation: cursor-bounce-out 230ms cubic-bezier(0.24, 1.35, 0.40, 1) both;
     }
 
     body.cursor--hand .site-cursor {
+        --cursor-image: none;
         --cursor-emoji: "👆";
-        --cursor-glyph-rotate: 0deg;
+        --cursor-emoji-visible: 1;
+        --cursor-tip-x: 15px;
+        --cursor-tip-y: 9px;
     }
 
     body.cursor--email-horns .site-cursor {
+        --cursor-image: none;
         --cursor-emoji: "🤘";
-        --cursor-glyph-rotate: 0deg;
-        /* Adjustable: horns hotspot (non-big, usually not visible) */
-        --cursor-tip-x: 30px;
-        --cursor-tip-y: 16px;
+        --cursor-emoji-visible: 1;
+        --cursor-tip-x: 18px;
+        --cursor-tip-y: 12px;
     }
 
     body.cursor--big:not(.cursor--email-horns) .site-cursor {
-        --cursor-scale: 1;
-        /* Big state hotspot tweak: ~10px up and to the right */
-        --cursor-tip-x: 50px;
-        --cursor-tip-y: 0px;
-        animation: cursor-bounce-in 280ms cubic-bezier(0.24, 1.35, 0.40, 1) both;
+        --cursor-scale: 1.8;
+        animation: cursor-bounce-in 260ms cubic-bezier(0.24, 1.35, 0.40, 1) both;
     }
 
     body.cursor--email-horns.cursor--big .site-cursor {
-        --cursor-scale: 1;
-        /* Adjustable: horns hotspot (big) */
-        --cursor-tip-x: 100px;
-        --cursor-tip-y: 0px;
-        animation: cursor-bounce-in 280ms cubic-bezier(0.24, 1.35, 0.40, 1) both;
+        --cursor-scale: 1.8;
+        animation: cursor-bounce-in 260ms cubic-bezier(0.24, 1.35, 0.40, 1) both;
     }
 }
 
@@ -860,4 +912,126 @@ body.light-mode {
 
 .infinite-sentinel {
     height: 1px;
+}
+
+/* Eye lab */
+.eye-lab {
+    min-height: 100vh;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.eye-lab__stage {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    padding: 48px 0 48px 20vw;
+}
+
+.eye-lab__canvas {
+    position: relative;
+    width: 100px;
+    aspect-ratio: 104 / 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .eye-lab,
+    .eye-lab * {
+        cursor: url('/assets/Dancursor40.svg') 6 6, auto;
+    }
+}
+
+.eye {
+    position: relative;
+    width: 82%;
+    aspect-ratio: 104 / 60; /* matches the SVG viewBox ratio for fidelity */
+    filter: drop-shadow(0 12px 24px rgb(0 0 0 / 45%));
+}
+
+.eye__layer {
+    transition: transform 140ms cubic-bezier(0.33, 1, 0.68, 1);
+    will-change: transform;
+}
+
+.eye__svg {
+    display: block;
+    width: 118%;
+    height: auto;
+    color: var(--color-foreground);
+    filter: drop-shadow(0 8px 22px rgb(0 0 0 / 35%));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .eye__mask-shape,
+    .eye__lid-inner {
+        transform-box: fill-box;
+        transform-origin: center;
+        transform: scaleY(var(--eye-blink-scale, 1));
+        will-change: transform;
+    }
+
+    .eye__lid-inner {
+        pointer-events: none;
+        vector-effect: non-scaling-stroke;
+    }
+}
+
+.eye__svg .eye__layer {
+    transform: translate(var(--layer-x, 0px), var(--layer-y, 0px)) scale(var(--layer-scale, 1));
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.eye__svg .eye__layer--crossline {
+    transform: translateY(var(--layer-y, 0px)) scale(var(--layer-scale, 1));
+}
+
+.eye-controls {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    width: min(340px, calc(100vw - 32px));
+    padding: 12px 12px 10px;
+    border: 1px solid rgb(var(--color-foreground-rgb) / 35%);
+    border-radius: 12px;
+    background: rgb(0 0 0 / 55%);
+    color: var(--color-foreground);
+    font-size: 12px;
+    line-height: 1.4;
+    backdrop-filter: blur(12px);
+    z-index: 1000;
+}
+
+.eye-controls__row {
+    display: grid;
+    grid-template-columns: 110px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.eye-controls label {
+    opacity: 0.85;
+}
+
+.eye-controls input[type="range"] {
+    width: 100%;
+}
+
+.eye-controls__value {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
+    min-width: 54px;
+    text-align: right;
+}
+
+.eye-controls__note {
+    grid-column: 1 / -1;
+    font-size: 11px;
+    opacity: 0.65;
 }

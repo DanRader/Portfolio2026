@@ -10,12 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
         peakVw: 1.4,        // approx 20px @ 1440
         extraSlices: 20,
         gapExtraPx: 200,
-        xOffsetPx: 400,
+        xOffsetPx: -400,
         blendVariation: 100,
         jitterX: 100,
         jitterY: 100,
-        exitShiftX: 300,    // Uniform X movement
-        exitRangeX: 50,     // Random scatter on top
+        exitShiftX: 160,    // Uniform X movement
+        exitRangeX: 17,     // Random scatter on top
         exitRangeY: 0       // Max Y scatter
     };
 
@@ -250,11 +250,11 @@ document.addEventListener('DOMContentLoaded', () => {
     panel.appendChild(makeControlRow('Exit Shift X', exitShiftX, exitShiftXVal));
 
     const exitXVal = createValue(`${config.exitRangeX}px`);
-    const exitXRange = createRange({ min: 0, max: 1000, step: 10, value: config.exitRangeX });
+    const exitXRange = createRange({ min: 0, max: 200, step: 1, value: config.exitRangeX });
     panel.appendChild(makeControlRow('Exit Scatter X', exitXRange, exitXVal));
 
     const exitYVal = createValue(`${config.exitRangeY}px`);
-    const exitYRange = createRange({ min: 0, max: 1000, step: 10, value: config.exitRangeY });
+    const exitYRange = createRange({ min: 0, max: 200, step: 1, value: config.exitRangeY });
     panel.appendChild(makeControlRow('Exit Scatter Y', exitYRange, exitYVal));
 
     const presetInput = document.createElement('input');
@@ -346,13 +346,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Animation Logic:
         // Start: When the visual top of the stack (rect.top - biasHeight) enters the viewport bottom.
         // End: When the element hits its lock/end position.
-        // We delay the end by 1/3 viewport height into the zero state.
-
-        // Use tenetStep for tracking. 
-        // Start Top: vh + biasHeight
-        // Entry End Top: cachedStickyTop - (vh / 3)
-        // Exit Start: Entry End - 100px (brief hold)
-        // Exit End: Exit Start - 400px (decomposition)
 
         const animationStartTop = vh + biasHeight;
         // Entry completes after 300px of scrolling past lock
@@ -551,9 +544,9 @@ document.addEventListener('DOMContentLoaded', () => {
             row.appendChild(visibleWrap);
             biasStack.appendChild(row);
 
-            // Exit State
-            const exitX = exitShiftX + (Math.random() * exitRangeX);
-            const exitY = (Math.random() * 2 - 1) * exitRangeY;
+            // Exit State: Disable for bias slices
+            const exitX = 0; // endX
+            const exitY = endY; // current endY (visible)
 
             newHelperSlices.push({ el: text, startX, startY, endX: 0, endY, exitX, exitY });
         }

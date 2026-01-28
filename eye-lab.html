@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eye Lab — Cursor Track</title>
+    <link rel="stylesheet" href="/css/styles.scss" />
+</head>
+<body>
+    <main class="eye-lab" aria-label="Cursor-tracked eye lab">
+        <section class="eye-lab__stage" aria-label="Eye playground">
+            <div class="eye-lab__canvas">
+                <div class="eye" data-eye>
+                    <svg class="eye__svg" viewBox="0 0 104 60" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <mask id="mask0_eye" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="4" width="104" height="52">
+                            <ellipse class="eye__mask-shape" cx="51.6748" cy="30" rx="50.6748" ry="25" fill="#181A1A" stroke="#FFE0DD" stroke-width="2" />
+                        </mask>
+                        <g class="eye__mask-group" mask="url(#mask0_eye)">
+                            <g class="eye__layer--outline">
+                                <ellipse cx="51.6748" cy="30" rx="50.6748" ry="25" stroke="currentColor" stroke-width="2" />
+                                <ellipse cx="51.6748" cy="30" rx="50.6748" ry="25" stroke="currentColor" stroke-width="2" />
+                            </g>
+
+                            <ellipse class="eye__layer eye__layer--circle-middle" data-layer data-depth="0.35" data-max="10" cx="51.6746" cy="30" rx="40.0638" ry="25" stroke="currentColor" stroke-width="2" />
+                            <line class="eye__layer eye__layer--crossline" data-layer data-depth="0.75" data-max="18" x1="1" y1="31" x2="102.35" y2="31" stroke="currentColor" stroke-width="2" />
+
+                            <g class="eye__layer eye__layer--core" data-layer data-depth="0.75" data-max="18">
+                                <circle class="eye__layer--circle-inner" cx="51.6748" cy="30" r="25" stroke="currentColor" stroke-width="2" />
+
+                                <mask id="mask1_eye" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="-23" y="-44" width="147" height="148">
+                                    <path d="M51.1113 -43.0703C51.6636 -43.0703 52.1113 -42.6226 52.1113 -42.0703V24.6013C52.1113 26.3831 54.2656 27.2754 55.5255 26.0155L101.639 -20.0977C102.029 -20.488 102.662 -20.488 103.053 -20.0977C103.443 -19.7072 103.443 -19.0741 103.053 -18.6836L57.7834 26.5858C56.5234 27.8457 57.4158 30 59.1976 30H122.181C122.733 30 123.181 30.4477 123.181 31C123.181 31.5523 122.733 32 122.181 32H59.472C57.6902 32 56.7978 34.1543 58.0578 35.4142L104.467 81.8232C104.857 82.2138 104.857 82.8478 104.467 83.2383C104.076 83.6284 103.443 83.6286 103.053 83.2383L55.5256 35.7102C54.2656 34.4502 52.1113 35.3426 52.1113 37.1244V102.068C52.1113 102.621 51.6636 103.068 51.1113 103.068C50.559 103.068 50.1113 102.621 50.1113 102.068V39.0863C50.1113 37.3045 47.957 36.4122 46.6971 37.6721L1.13184 83.2383C0.741312 83.6288 0.107321 83.6288 -0.283203 83.2383C-0.673452 82.8478 -0.673352 82.2147 -0.283203 81.8242L46.1268 35.4142C47.3867 34.1543 46.4944 32 44.7126 32H-21.958C-22.5103 32 -22.958 31.5523 -22.958 31C-22.958 30.4477 -22.958 30 -21.958 30H44.987C46.7688 30 47.6611 27.8457 46.4012 26.5858L1.13184 -18.6836C0.741312 -19.0741 0.741312 -19.7071 1.13184 -20.0977C1.52237 -20.488 2.15543 -20.4881 2.5459 -20.0977L46.6971 24.0536C47.957 25.3135 50.1113 24.4212 50.1113 22.6393V-42.0703C50.1113 -42.6226 50.559 -43.0703 51.1113 -43.0703Z" fill="currentColor" />
+                                </mask>
+                                <g class="eye__layer--pupil" mask="url(#mask1_eye)">
+                                    <circle cx="51.6748" cy="30" r="25" fill="currentColor" />
+                                </g>
+                            </g>
+                        </g>
+                        <ellipse class="eye__lid-inner" cx="51.6748" cy="30" rx="50.6748" ry="25" fill="none" stroke="currentColor" stroke-width="1" />
+                    </svg>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="/js/eye-lab.js"></script>
+</body>
+</html>

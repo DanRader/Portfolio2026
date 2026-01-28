@@ -33,6 +33,9 @@ function sanitizeClone(copyEl) {
   idRefAttrs.forEach((attr) => {
     copyEl.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr));
   });
+
+  // Drop the intro eye in clones to avoid duplicate SVG/masks and extra work.
+  copyEl.querySelectorAll('.intro-eye').forEach((el) => el.remove());
 }
 
 function createCopyFrom(sourceCopy, nextCopyIndex) {

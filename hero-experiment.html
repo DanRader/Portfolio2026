@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hero Section Experiment | Dan Rader</title>
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="stylesheet" href="/css/hero-experiment.scss">
+</head>
+
+<body class="has-custom-cursor">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header>
+        <nav>
+            <div class="logo">Experiment 01</div>
+            <div class="util">
+                <a href="/" class="back-link">Back to Portfolio</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="experiment-ui" aria-label="Experiment Controls">
+            <div class="control-group">
+                <label for="intensity">Intensity</label>
+                <input type="range" id="intensity" min="0" max="100" value="50">
+            </div>
+            <div class="control-group">
+                <label for="radius">Radius</label>
+                <input type="range" id="radius" min="100" max="1000" value="400">
+            </div>
+        </div>
+
+        <section class="intro" aria-label="Intro" id="top">
+            <img class="intro-star" src="/assets/star.svg" alt="" aria-hidden="true">
+            <h1 class="intro-title split-text">
+                Dan Rader is a <br>
+                <span class="intro-rotator"><span class="intro-em intro-rotator__word split-text">Design</span></span>
+                <span class="intro-leader split-text">leader.</span>
+            </h1>
+        </section>
+        <p class="instruction">Hover over the letters to deform them</p>
+    </main>
+
+    <div class="site-cursor" aria-hidden="true"></div>
+
+    <script type="module" src="/js/hero-experiment.js"></script>
+</body>
+
+</html>

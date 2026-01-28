@@ -1,0 +1,210 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght,wdth@6..144,100..1000,25..151&display=swap');
+
+:root {
+    --color-foreground: #FFE0DD;
+    --color-background: #161818;
+    --font-primary: 'Google Sans Flex', sans-serif;
+}
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-primary);
+    overflow: hidden;
+    height: 100vh;
+}
+
+.grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background-image: url('/assets/grain-overlay.png');
+    background-size: 112% 112%;
+    opacity: 0.10;
+    mix-blend-mode: screen;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 100;
+    padding: 40px;
+
+    nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .logo {
+        font-size: 19px;
+        letter-spacing: 0.58px;
+    }
+
+    .back-link {
+        text-decoration: none;
+        color: var(--color-foreground);
+        font-size: 16px;
+        opacity: 0.6;
+        transition: opacity 0.3s;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+}
+
+/* UI Controls */
+.experiment-ui {
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+    z-index: 200;
+    background: rgba(var(--color-foreground-rgb, 255, 224, 221), 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 24px;
+    border-radius: 20px;
+    border: 1px solid rgba(var(--color-foreground-rgb, 255, 224, 221), 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 240px;
+
+    .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.6;
+        }
+
+        input[type="range"] {
+            appearance: none;
+            background: rgba(255, 224, 221, 0.2);
+            height: 2px;
+            border-radius: 2px;
+            outline: none;
+
+            &::-webkit-slider-thumb {
+                appearance: none;
+                width: 12px;
+                height: 12px;
+                background: var(--color-foreground);
+                border-radius: 50%;
+                cursor: pointer;
+            }
+        }
+    }
+}
+
+main {
+    position: relative;
+    z-index: 2;
+}
+
+.intro {
+    display: grid;
+    position: relative;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 24px;
+    padding: 28vh 40px;
+    /* Added 40px horizontal padding to match main site's visual container */
+    max-width: 1440px;
+    /* Optional: adds a common max-width if needed */
+    margin: 0 auto;
+}
+
+.intro-star {
+    position: fixed;
+    left: calc(40px + ((100vw - 200px) / 6) + 24px);
+    top: 28vh;
+    width: 60px;
+    height: 60px;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.intro-title {
+    grid-column: 2 / -1;
+    position: relative;
+    z-index: 1;
+    max-width: 963px;
+    font-size: 100.8px;
+    line-height: 108.5px;
+    font-weight: 300;
+    letter-spacing: 0;
+
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.intro-em {
+    font-style: italic;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.intro-rotator {
+    display: inline-block;
+    vertical-align: baseline;
+    line-height: inherit;
+    overflow: visible;
+}
+
+.intro-leader {
+    white-space: nowrap;
+}
+
+/* Individual Character Styling */
+.char {
+    display: inline;
+    /* Keep as inline to not break text wrapping/spacing */
+    font-variation-settings: "wght" var(--char-wght, 300), "wdth" var(--char-wdth, 100);
+    will-change: font-variation-settings;
+}
+
+.instruction {
+    position: fixed;
+    bottom: 40px;
+    left: 40px;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.4;
+    z-index: 2;
+}
+
+/* Minimal Custom Cursor */
+.site-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    background-color: var(--color-foreground);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10000;
+    transform: translate(-50%, -50%);
+    mix-blend-mode: difference;
+}
+
+body.has-custom-cursor {
+    cursor: none;
+}
