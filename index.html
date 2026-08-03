@@ -8,71 +8,6 @@
     <link rel="stylesheet" href="/css/styles.scss">
 </head>
 <body>
-    <svg width="0" height="0" aria-hidden="true" focusable="false" style="position: absolute; left: -9999px; top: -9999px;">
-        <filter id="tenet-grain" x="-20%" y="-20%" width="140%" height="140%">
-            <!--
-              Grainy blur texture (Figma-like): JS applies CSS blur() first, then this filter,
-              so the grain affects only the blurred output (and is set to 0 at the crisp midpoint).
-            -->
-            <feComposite in="SourceGraphic" in2="SourceGraphic" operator="over" result="src" />
-
-            <feTurbulence type="fractalNoise" baseFrequency="1.04" numOctaves="4" seed="2" result="noise" />
-            <feColorMatrix in="noise" type="saturate" values="0" result="noiseMono" />
-
-            <feColorMatrix
-                in="noiseMono"
-                type="matrix"
-                values="
-                    0 0 0 0 0
-                    0 0 0 0 0
-                    0 0 0 0 0
-                    1 0 0 0 0
-                "
-                result="noiseAlpha"
-            />
-
-            <feColorMatrix
-                in="src"
-                type="matrix"
-                values="
-                    0 0 0 0 0
-                    0 0 0 0 0
-                    0 0 0 0 0
-                    0 0 0 1 0
-                "
-                result="blurAlpha"
-            />
-
-            <feComponentTransfer in="noiseAlpha" result="noiseShaped">
-                <feFuncA id="tenet-grain-contrast-a" type="linear" slope="1.3" intercept="0" />
-            </feComponentTransfer>
-
-            <feComponentTransfer in="noiseShaped" result="noiseCentered">
-                <feFuncA type="linear" slope="1" intercept="-0.5" />
-            </feComponentTransfer>
-
-            <feComposite
-                id="tenet-grain-dither"
-                in="blurAlpha"
-                in2="noiseCentered"
-                operator="arithmetic"
-                k1="0"
-                k2="1"
-                k3="0"
-                k4="0"
-                result="alphaDithered"
-            />
-
-            <feComponentTransfer in="alphaDithered" result="alphaQuant">
-                <feFuncA type="discrete" tableValues="0 0.14 0.28 0.42 0.56 0.70 0.84 1" />
-            </feComponentTransfer>
-
-            <feComposite in="src" in2="alphaQuant" operator="in" result="blurStippled" />
-
-            <feComposite id="tenet-grain-mix" in="src" in2="blurStippled" operator="arithmetic" k1="0" k2="1" k3="0" k4="0" />
-        </filter>
-    </svg>
-
     <div class="grain" aria-hidden="true"></div>
     <div class="grid-overlay" aria-hidden="true">
         <div class="grid-col"></div>
@@ -85,7 +20,11 @@
 
     <header>
         <nav>
-            <div class="logo">Dan Rader</div>
+            <div class="logo-badge">
+                <span class="logo-badge__glyph" aria-hidden="true">☺</span>
+                <span class="logo-badge__rule" aria-hidden="true"></span>
+                <span class="logo-badge__name">Dan Rader</span>
+            </div>
             <div class="util">
                 <button class="theme-toggle" aria-label="Toggle dark mode">
                     <span class="theme-toggle__thumb" aria-hidden="true">
@@ -114,44 +53,14 @@
         </nav>
     </header>
 
-    <div id="infinite-scroll-root">
-        <div class="infinite-sentinel" data-sentinel="top" aria-hidden="true"></div>
-        <div class="site-copy" data-copy="0">
-            <main>
+    <main>
         <section class="intro" aria-label="Intro" id="top">
-            <div class="intro-eye" data-eye>
-                <svg class="eye__svg" viewBox="0 0 104 60" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <mask id="mask0_intro_eye" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="4" width="104" height="52">
-                        <ellipse class="eye__mask-shape" cx="51.6748" cy="30" rx="50.6748" ry="25" fill="#181A1A" stroke="#FFE0DD" stroke-width="2" />
-                    </mask>
-                    <g class="eye__mask-group" mask="url(#mask0_intro_eye)">
-                        <g class="eye__layer--outline">
-                            <ellipse cx="51.6748" cy="30" rx="50.6748" ry="25" stroke="currentColor" stroke-width="2" />
-                            <ellipse cx="51.6748" cy="30" rx="50.6748" ry="25" stroke="currentColor" stroke-width="2" />
-                        </g>
-
-                        <ellipse class="eye__layer eye__layer--circle-middle" data-layer data-depth="0.35" data-max="10" cx="51.6746" cy="30" rx="40.0638" ry="25" stroke="currentColor" stroke-width="2" />
-                        <line class="eye__layer eye__layer--crossline" data-layer data-depth="0.75" data-max="18" x1="1" y1="31" x2="102.35" y2="31" stroke="currentColor" stroke-width="2" />
-
-                        <g class="eye__layer eye__layer--core" data-layer data-depth="0.75" data-max="18">
-                            <circle class="eye__layer--circle-inner" cx="51.6748" cy="30" r="25" stroke="currentColor" stroke-width="2" />
-
-                            <mask id="mask1_intro_eye" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="-23" y="-44" width="147" height="148">
-                                <path d="M51.1113 -43.0703C51.6636 -43.0703 52.1113 -42.6226 52.1113 -42.0703V24.6013C52.1113 26.3831 54.2656 27.2754 55.5255 26.0155L101.639 -20.0977C102.029 -20.488 102.662 -20.488 103.053 -20.0977C103.443 -19.7072 103.443 -19.0741 103.053 -18.6836L57.7834 26.5858C56.5234 27.8457 57.4158 30 59.1976 30H122.181C122.733 30 123.181 30.4477 123.181 31C123.181 31.5523 122.733 32 122.181 32H59.472C57.6902 32 56.7978 34.1543 58.0578 35.4142L104.467 81.8232C104.857 82.2138 104.857 82.8478 104.467 83.2383C104.076 83.6284 103.443 83.6286 103.053 83.2383L55.5256 35.7102C54.2656 34.4502 52.1113 35.3426 52.1113 37.1244V102.068C52.1113 102.621 51.6636 103.068 51.1113 103.068C50.559 103.068 50.1113 102.621 50.1113 102.068V39.0863C50.1113 37.3045 47.957 36.4122 46.6971 37.6721L1.13184 83.2383C0.741312 83.6288 0.107321 83.6288 -0.283203 83.2383C-0.673452 82.8478 -0.673352 82.2147 -0.283203 81.8242L46.1268 35.4142C47.3867 34.1543 46.4944 32 44.7126 32H-21.958C-22.5103 32 -22.958 31.5523 -22.958 31C-22.958 30.4477 -22.958 30 -21.958 30H44.987C46.7688 30 47.6611 27.8457 46.4012 26.5858L1.13184 -18.6836C0.741312 -19.0741 0.741312 -19.7071 1.13184 -20.0977C1.52237 -20.488 2.15543 -20.4881 2.5459 -20.0977L46.6971 24.0536C47.957 25.3135 50.1113 24.4212 50.1113 22.6393V-42.0703C50.1113 -42.6226 50.559 -43.0703 51.1113 -43.0703Z" fill="currentColor" />
-                            </mask>
-                            <g class="eye__layer--pupil" mask="url(#mask1_intro_eye)">
-                                <circle cx="51.6748" cy="30" r="25" fill="currentColor" />
-                            </g>
-                        </g>
-                    </g>
-                    <ellipse class="eye__lid-inner" cx="51.6748" cy="30" rx="50.6748" ry="25" fill="none" stroke="currentColor" stroke-width="1" />
-                </svg>
+            <h1 class="intro-title">dan rader</h1>
+            <div class="intro-subrow">
+                <p class="intro-subrow__item">Design leader</p>
+                <p class="intro-subrow__item">Systems thinker</p>
+                <p class="intro-subrow__item">Human native</p>
             </div>
-            <h1 class="intro-title">
-                Dan Rader is a <br>
-                <span class="intro-rotator"><span class="intro-em intro-rotator__word">Design</span></span>
-                <span class="intro-leader">leader.</span>
-            </h1>
         </section>
 
         <section class="split split--top" id="howdy" aria-label="Howdy">
@@ -174,167 +83,67 @@
             </div>
         </section>
 
-        <section class="split split--top" id="ask" aria-label="Ask me about">
+        <section class="split split--wide" id="ask" aria-label="Ask me about">
             <div class="split-label">
                 <p class="section-label">Ask me about</p>
             </div>
-            <div class="ask-row">
-                <div class="cards" id="ask-cards" role="list" aria-label="Ask me about topics">
-                    <article class="card" role="listitem">
-                        <div class="card-visual" aria-hidden="true">
-                            <svg viewBox="0 0 200 200" fill="none">
-                                <polygon points="100,10 185,160 15,160" />
-                                <polygon points="100,35 165,155 35,155" />
-                                <polygon points="100,60 145,150 55,150" />
-                            </svg>
-                        </div>
-                        <div class="card-body">
-                            <p>Driving human connection in e-commerce</p>
-                        </div>
-                    </article>
-                    <article class="card" role="listitem">
-                        <div class="card-visual" aria-hidden="true">
-                            <svg viewBox="0 0 200 200" fill="none">
-                                <circle cx="100" cy="100" r="18" />
-                                <circle cx="100" cy="100" r="36" />
-                                <circle cx="100" cy="100" r="56" />
-                                <circle cx="100" cy="100" r="76" />
-                                <circle cx="100" cy="100" r="96" />
-                            </svg>
-                        </div>
-                        <div class="card-body">
-                            <p>Building cross-platform design systems</p>
-                        </div>
-                    </article>
-                    <article class="card" role="listitem">
-                        <div class="card-visual" aria-hidden="true">
-                            <svg viewBox="0 0 200 200" fill="none">
-                                <polygon points="100,10 185,160 15,160" />
-                                <polygon points="100,35 165,155 35,155" />
-                                <polygon points="100,60 145,150 55,150" />
-                            </svg>
-                        </div>
-                        <div class="card-body">
-                            <p>Defining cross-group platform thinking</p>
-                        </div>
-                    </article>
-                    <article class="card" role="listitem">
-                        <div class="card-visual" aria-hidden="true">
-                            <svg viewBox="0 0 200 200" fill="none">
-                                <circle cx="100" cy="100" r="18" />
-                                <circle cx="100" cy="100" r="36" />
-                                <circle cx="100" cy="100" r="56" />
-                                <circle cx="100" cy="100" r="76" />
-                                <circle cx="100" cy="100" r="96" />
-                            </svg>
-                        </div>
-                        <div class="card-body">
-                            <p>Uniting teams through design systems</p>
-                        </div>
-                    </article>
-                    <article class="card" role="listitem">
-                        <div class="card-visual" aria-hidden="true">
-                            <svg viewBox="0 0 200 200" fill="none">
-                                <polygon points="100,10 185,160 15,160" />
-                                <polygon points="100,35 165,155 35,155" />
-                                <polygon points="100,60 145,150 55,150" />
-                            </svg>
-                        </div>
-                        <div class="card-body">
-                            <p>Crafting systems-thinking approaches</p>
-                        </div>
-                    </article>
-
-                    <article class="card" role="listitem">
-                        <div class="card-visual" aria-hidden="true">
-                            <svg viewBox="0 0 200 200" fill="none">
-                                <circle cx="100" cy="100" r="18" />
-                                <circle cx="100" cy="100" r="36" />
-                                <circle cx="100" cy="100" r="56" />
-                                <circle cx="100" cy="100" r="76" />
-                                <circle cx="100" cy="100" r="96" />
-                            </svg>
-                        </div>
-                        <div class="card-body">
-                            <p>Design leadership and mentorship</p>
-                        </div>
-                    </article>
-
-                    <article class="card" role="listitem">
-                        <div class="card-visual" aria-hidden="true">
-                            <svg viewBox="0 0 200 200" fill="none">
-                                <polygon points="100,10 185,160 15,160" />
-                                <polygon points="100,35 165,155 35,155" />
-                                <polygon points="100,60 145,150 55,150" />
-                            </svg>
-                        </div>
-                        <div class="card-body">
-                            <p>Product strategy and prioritization</p>
-                        </div>
-                    </article>
-
-                    <article class="card" role="listitem">
-                        <div class="card-visual" aria-hidden="true">
-                            <svg viewBox="0 0 200 200" fill="none">
-                                <circle cx="100" cy="100" r="18" />
-                                <circle cx="100" cy="100" r="36" />
-                                <circle cx="100" cy="100" r="56" />
-                                <circle cx="100" cy="100" r="76" />
-                                <circle cx="100" cy="100" r="96" />
-                            </svg>
-                        </div>
-                        <div class="card-body">
-                            <p>Systems thinking in practice</p>
-                        </div>
-                    </article>
-
-                    <article class="card" role="listitem">
-                        <div class="card-visual" aria-hidden="true">
-                            <svg viewBox="0 0 200 200" fill="none">
-                                <polygon points="100,10 185,160 15,160" />
-                                <polygon points="100,35 165,155 35,155" />
-                                <polygon points="100,60 145,150 55,150" />
-                            </svg>
-                        </div>
-                        <div class="card-body">
-                            <p>Cross-functional collaboration</p>
-                        </div>
-                    </article>
-
-                    <article class="card" role="listitem">
-                        <div class="card-visual" aria-hidden="true">
-                            <svg viewBox="0 0 200 200" fill="none">
-                                <circle cx="100" cy="100" r="18" />
-                                <circle cx="100" cy="100" r="36" />
-                                <circle cx="100" cy="100" r="56" />
-                                <circle cx="100" cy="100" r="76" />
-                                <circle cx="100" cy="100" r="96" />
-                            </svg>
-                        </div>
-                        <div class="card-body">
-                            <p>Building teams and culture</p>
-                        </div>
-                    </article>
-                </div>
-
-                <div class="cards-scrollbar" aria-label="Ask me about scrollbar">
-                    <div class="cards-scrollbar__inner">
-                        <div class="cards-scrollbar__track" aria-hidden="true"></div>
-                        <div class="cards-scrollbar__thumb" aria-hidden="true"></div>
+            <div class="split-content split-content--wide ask-list">
+                <div class="ask-item">
+                    <div class="ask-item__video" aria-hidden="true">
+                        <video class="ask-item__video-el" muted loop playsinline preload="none" src="/assets/videos/item1-driving-connection.mp4"></video>
                     </div>
+                    <p class="ask-item__text">Driving human connection through systems</p>
+                    <div class="ask-item__rule" aria-hidden="true"></div>
+                </div>
+                <div class="ask-item">
+                    <div class="ask-item__video" aria-hidden="true">
+                        <video class="ask-item__video-el" muted loop playsinline preload="none" src="/assets/videos/item2-org-design.mp4"></video>
+                    </div>
+                    <p class="ask-item__text">Leveraging org design as a catalyst for craft</p>
+                    <div class="ask-item__rule" aria-hidden="true"></div>
+                </div>
+                <div class="ask-item">
+                    <div class="ask-item__video" aria-hidden="true">
+                        <video class="ask-item__video-el" muted loop playsinline preload="none" src="/assets/videos/ask-preview-placeholder.mp4"></video>
+                    </div>
+                    <p class="ask-item__text">Creating AI Design Language</p>
+                    <div class="ask-item__rule" aria-hidden="true"></div>
+                </div>
+                <div class="ask-item">
+                    <div class="ask-item__video" aria-hidden="true">
+                        <video class="ask-item__video-el" muted loop playsinline preload="none" src="/assets/videos/item4-future-of-play.mp4"></video>
+                    </div>
+                    <p class="ask-item__text">Enabling the future of play across every device</p>
+                    <div class="ask-item__rule" aria-hidden="true"></div>
+                </div>
+                <div class="ask-item">
+                    <div class="ask-item__video" aria-hidden="true">
+                        <video class="ask-item__video-el" muted loop playsinline preload="none" src="/assets/videos/item5-white-labeled.mp4"></video>
+                    </div>
+                    <p class="ask-item__text">Creating white labeled systems to bring fitness brands to life</p>
+                    <div class="ask-item__rule" aria-hidden="true"></div>
+                </div>
+                <div class="ask-item">
+                    <div class="ask-item__video" aria-hidden="true">
+                        <video class="ask-item__video-el" muted loop playsinline preload="none" src="/assets/videos/item6-vw-electric.mp4"></video>
+                    </div>
+                    <p class="ask-item__text">Launching new VW Electric Vehicles to the US market</p>
+                    <div class="ask-item__rule" aria-hidden="true"></div>
                 </div>
             </div>
         </section>
 
-        <section class="split tenets-static" id="core-tenets" aria-label="Core Tenets">
+        <section class="split split--wide" id="but-also" aria-label="But Also">
             <div class="split-label">
-                <p class="section-label">Core Tenets</p>
+                <p class="section-label">But Also</p>
             </div>
-            <div class="split-content tenets-simple">
-                <h2 class="tenet-heading">Give a damn</h2>
-                <h2 class="tenet-heading">Strong convictions, loosely held</h2>
-                <h2 class="tenet-heading">Bias towards action</h2>
+            <div class="split-content split-content--wide but-also-row">
+                <p class="but-also-item">Pottery</p>
+                <p class="but-also-item">Kids</p>
+                <p class="but-also-item">Travel</p>
+                <p class="but-also-item">Bikes</p>
             </div>
+            <div class="but-also-rule" aria-hidden="true"></div>
         </section>
 
         <section class="split" id="timeline" aria-label="Timeline">
@@ -372,26 +181,22 @@
                 </div>
             </div>
         </section>
-            </main>
+    </main>
 
-            <footer class="footer" aria-label="Footer">
-                <div class="footer-inner">
-                    <a class="footer-pill footer-pill--email" href="mailto:itsdanrader@gmail.com">
-                        <span class="footer-email-user">itsdanrader</span><span class="footer-email-domain">@gmail.com</span>
-                    </a>
-                    <a class="footer-pill footer-pill--link" href="#" aria-label="LinkedIn">
-                        Linkedin
-                    </a>
-                    <a class="footer-pill footer-pill--link" href="#" aria-label="Other">
-                        Other
-                    </a>
-                </div>
-            </footer>
+    <footer class="footer" aria-label="Footer">
+        <div class="footer-inner">
+            <a class="footer-pill footer-pill--email" href="mailto:itsdanrader@gmail.com">
+                <span class="footer-email-user">itsdanrader</span><span class="footer-email-domain">@gmail.com</span>
+            </a>
+            <a class="footer-pill footer-pill--link" href="#" aria-label="LinkedIn">
+                Linkedin
+            </a>
+            <a class="footer-pill footer-pill--link" href="#" aria-label="Etsy">
+                Etsy
+            </a>
         </div>
-        <div class="infinite-sentinel" data-sentinel="bottom" aria-hidden="true"></div>
-    </div>
+    </footer>
 
-    <script type="module" src="/js/infiniteLoopScroll.js"></script>
     <script type="module" src="/js/script.js"></script>
 </body>
 </html>

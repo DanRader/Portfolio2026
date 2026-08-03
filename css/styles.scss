@@ -9,6 +9,7 @@
     --color-foreground: #FFE0DD;
     --color-background: #161818;
     --color-foreground-rgb: 255 224 221;
+    --color-accent: #F6D7D4;
 
     /* Layout */
     --header-height: 72px;
@@ -139,12 +140,37 @@ header {
         height: var(--header-height);
     }
 
-    .logo {
+    .logo-badge {
         grid-column: 1 / span 3;
+        justify-self: start;
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 16px;
+        border: 1px solid var(--color-accent);
+        border-radius: 999px;
+        background: rgb(var(--color-foreground-rgb) / 4%);
+    }
+
+    .logo-badge__glyph {
+        font-family: var(--font-secondary);
+        font-size: 20px;
+        line-height: 1;
+        color: var(--color-accent);
+    }
+
+    .logo-badge__rule {
+        flex: 1 0 40px;
+        height: 1px;
+        background: var(--color-accent);
+    }
+
+    .logo-badge__name {
         font-family: var(--font-primary);
-        font-size: 19px;
-        letter-spacing: 0.58px;
-        color: var(--color-foreground);
+        font-size: 16px;
+        letter-spacing: -0.02em;
+        color: var(--color-accent);
+        white-space: nowrap;
     }
 
     .util {
@@ -153,6 +179,43 @@ header {
         display: flex;
         align-items: center;
         gap: 24px;
+    }
+
+    .theme-toggle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        width: 59px;
+        height: 34.54px;
+        padding: 2.88px;
+        border-radius: 57.56px;
+        background: rgb(var(--color-foreground-rgb) / 7%);
+        transition: background 0.2s;
+    }
+
+    .theme-toggle__thumb {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28.78px;
+        height: 28.78px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.49);
+        color: var(--color-foreground);
+        transition: transform 0.3s ease, background 0.3s ease;
+
+        .moon-icon {
+            opacity: 1;
+            transform: rotate(0deg);
+            position: static;
+        }
+
+        .sun-icon {
+            opacity: 0;
+            transform: rotate(90deg);
+            position: absolute;
+        }
     }
 
     .hamburger {
@@ -212,86 +275,47 @@ main > section {
 }
 
 .intro {
-    display: grid;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
     position: relative;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 24px;
-    padding: 28vh 0;
-}
-
-.intro-eye {
-    position: fixed;
-    left: calc(40px + ((100vw - 200px) / 6) + 24px);
-    top: 28vh;
-    width: 100px;
-    z-index: 3;
-    pointer-events: none;
-}
-
-/* Show intro eye only on the source copy; hide in infinite-scroll clones */
-.site-copy:not([data-source="true"]) .intro-eye {
-    display: none;
-}
-
-.intro-eye .eye__svg {
-    width: 100%;
-    height: auto;
+    gap: 32px;
+    min-height: calc(100vh - var(--header-height));
+    padding-bottom: 5vh;
 }
 
 .intro-title {
-    grid-column: 2 / -1;
     position: relative;
     z-index: 1;
-    max-width: 963px;
-    font-size: 100.8px;
-    line-height: 108.5px;
-    font-weight: 300;
-    letter-spacing: 0;
+    width: 100%;
+    margin: 0;
+    font-size: clamp(56px, 24.3vw, 349.57px);
+    line-height: 1.08;
+    font-weight: 400;
+    letter-spacing: -0.04em;
+    color: var(--color-accent);
+    text-transform: lowercase;
 
     user-select: none;
     -webkit-user-select: none;
 }
 
-.intro-em {
-    font-style: italic;
-    font-weight: 700;
-    white-space: nowrap;
+.intro-subrow {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 24px;
 }
 
-.intro-rotator {
-    display: inline-block;
-    width: var(--rotator-width, auto);
-    vertical-align: baseline;
-    line-height: inherit;
-    overflow: visible;
-    transition: width 420ms cubic-bezier(0.2, 0.0, 0.0, 1);
-    will-change: width;
+.intro-subrow__item {
+    font-size: 16.89px;
+    line-height: 1.65;
+    letter-spacing: -0.04em;
+    color: var(--color-accent);
 }
 
-.intro-rotator__word {
-    display: inline-block;
-    white-space: nowrap;
-    opacity: 1;
-    transform: translateY(0);
-    transition: opacity 220ms ease, transform 220ms ease;
-}
-
-.intro-rotator.is-fading .intro-rotator__word {
-    opacity: 0;
-    transform: translateY(8px);
-}
-
-.intro-leader {
-    white-space: nowrap;
-}
-
-.intro-rotator__sizer {
-    position: fixed;
-    left: -9999px;
-    top: -9999px;
-    visibility: hidden;
-    white-space: nowrap;
-}
+.intro-subrow__item:nth-child(1) { grid-column: 1; }
+.intro-subrow__item:nth-child(2) { grid-column: 3; }
+.intro-subrow__item:nth-child(3) { grid-column: 5; }
 
 .split {
     display: grid;
@@ -320,6 +344,36 @@ main > section {
 
 .split-content {
     grid-column: 4 / -1;
+}
+
+/* Ask me about / But Also: label sits directly above a full-width content row
+   (unlike the default split-label/split-content side-by-side layout). */
+.split--wide .split-label {
+    grid-row: 1;
+}
+
+.split-content--wide {
+    grid-row: 2;
+    grid-column: 3 / -1;
+    margin-top: 24px;
+}
+
+/* Above 1000px, align the Ask me about content to the same 3 right-hand
+   columns used by the Bio/Howdy sections, instead of the full 4-column width
+   used by default (and still used by But Also). It also moves back into the
+   label's row and restores baseline alignment, so the first ask-item's text
+   sits on the same baseline as the "Ask me about" label, matching how
+   Bio/Howdy align their label against their body copy. */
+@media (min-width: 1000px) {
+    #ask .split-content--wide {
+        grid-column: 4 / -1;
+        grid-row: 1;
+        margin-top: 0;
+    }
+
+    #ask.split {
+        align-items: baseline;
+    }
 }
 
 #core-tenets .split-content,
@@ -474,42 +528,6 @@ section[aria-label="Core Tenets"] .tenet--strips20 .tenet-biasSlice__text {
     display: block;
 }
 
-#core-tenets.tenets-static .split-label,
-section[aria-label="Core Tenets"].tenets-static .split-label {
-    grid-column: 3;
-}
-
-#core-tenets.tenets-static .split-content,
-section[aria-label="Core Tenets"].tenets-static .split-content {
-    grid-column: 4 / -1;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
-.tenets-simple {
-    display: flex;
-    flex-direction: column;
-    gap: var(--section-spacing);
-}
-
-.tenet-heading {
-    font-family: var(--font-display);
-    font-size: clamp(48px, 8vw, 112px);
-    line-height: 0.92;
-    font-weight: 400;
-    text-transform: uppercase;
-}
-
-
-.ask-row {
-    grid-column: 1 / -1;
-    margin-top: 16px;
-
-    /* start of column 3 within this row (no outer 40px padding here) */
-    --ask-left: calc((2 * ((100% - (5 * 24px)) / 6)) + (2 * 24px));
-}
-
 .bio-text {
     font-size: 16px;
     line-height: 28px;
@@ -520,121 +538,133 @@ section[aria-label="Core Tenets"].tenets-static .split-content {
     margin-top: 16px;
 }
 
-.cards {
+.ask-list {
     display: flex;
-    gap: 24px;
-    overflow-x: auto;
-    overflow-y: visible;
-    padding-top: 6px;
-    padding-bottom: 8px;
-    scroll-snap-type: x mandatory;
-
-
-    /* Ask-me-about alignment: first card starts under the title */
-    padding-left: var(--ask-left, 0px);
-    scroll-padding-left: var(--ask-left, 0px);
-
-    /* Hide native scrollbar; we render a custom one below */
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    flex-direction: column;
+    gap: 27px;
 }
 
-.cards::-webkit-scrollbar {
-    height: 0;
-}
-
-.cards-scrollbar {
-    height: 40px;
-    margin-top: 8px;
-    cursor: pointer;
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-.cards-scrollbar__inner {
+.ask-item {
     position: relative;
-    height: 40px;
-    margin-left: var(--ask-left, 0px);
-    width: calc(100% - var(--ask-left, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    isolation: isolate;
 }
 
-.cards-scrollbar__track {
+.ask-item.is-active {
+    /* Lets this item's full-height video reveal bleed over its neighbors above
+       and below instead of being painted under them. Applied via JS (see
+       script.js) rather than :hover, since the hover target is scoped to just
+       the title text, not the whole item (gap + rule included). */
+    z-index: 10;
+}
+
+.ask-list.is-hovering .ask-item:not(.is-active) {
+    /* The active item's video is a full-screen fixed overlay, so without this
+       every other item's (dimmed) title would be painted underneath it and
+       invisible no matter its opacity. This keeps them above that overlay. */
+    z-index: 20;
+}
+
+.ask-item__video {
+    /* Fixed + inset:0 always covers the full viewport, regardless of scroll
+       position or where this item sits in the grid, so it reads as a true
+       full-screen reveal. isolation:isolate + .is-active's z-index still
+       confines it below the (higher, separately-stacked) header. */
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 400ms ease;
+}
+
+.ask-item__video::after {
+    content: '';
     position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    height: 1px;
-    transform: translateY(-50%);
-    background: rgb(var(--color-foreground-rgb) / 20%);
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
 }
 
-.cards-scrollbar__thumb {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    height: 1px;
-    transform: translateY(-50%);
-    background: rgb(var(--color-foreground-rgb) / 100%);
-    width: 40px;
-    will-change: transform, width;
-}
-
-.card {
-    width: 207px;
-    min-width: 207px;
-    height: 297px;
-    border: 1px solid var(--color-foreground);
-    border-radius: 20px;
-    overflow: hidden;
-    background: transparent;
-    scroll-snap-align: start;
-
-    transition: transform 220ms cubic-bezier(0.2, 0.0, 0.0, 1), background-color 160ms ease;
+.ask-item__video-el {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .card {
-        cursor: pointer;
-    }
-
-    .card:hover {
-        transform: translateY(-2px);
-        background: rgb(var(--color-foreground-rgb) / 6%);
-    }
-
-    .card:hover .card-visual svg {
+    .ask-item.is-active .ask-item__video {
         opacity: 1;
     }
 }
 
-.card-visual {
-    height: 207px;
-    border-bottom: 1px solid var(--color-foreground);
+.ask-item__text {
     position: relative;
-    overflow: hidden;
+    z-index: 1;
+    font-family: var(--font-primary);
+    font-size: clamp(28px, 3.3vw, 47.2px);
+    line-height: 1.15;
+    font-weight: 400;
+    opacity: 1;
+    /* Reveals (back to fully visible) are the slow, lazy transition; see the
+       hidden/half-visible states below for the fast hide. */
+    transition: opacity 600ms ease;
 }
 
-.card-visual svg {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 252px;
-    height: 252px;
-    transform: translate(-50%, -50%);
-    opacity: 0.9;
+@media (hover: hover) and (pointer: fine) {
+    /* While an item is active, the other titles hide completely so the video
+       reveal has full focus. If the mouse starts moving, they bump up to a
+       half-visible affordance hinting they're hoverable too; once it settles
+       again (see script.js), they sink back to fully hidden.
+
+       Hiding (dropping to 0) is snappy so it never feels like it's lagging
+       behind the cursor; revealing (back to 0.5 or 1) is slower and lazier so
+       it doesn't feel glitchy/flickery. CSS transitions use the duration
+       defined on the state being transitioned *to*, so the fast/slow split
+       just lives on the opacity:0 vs opacity:0.5/1 rules below. */
+    .ask-list.is-hovering .ask-item:not(.is-active) .ask-item__text,
+    .ask-list.is-hovering .ask-item:not(.is-active) .ask-item__rule {
+        opacity: 0;
+        transition: opacity 120ms ease;
+    }
+
+    .ask-list.is-hovering.is-moving .ask-item:not(.is-active) .ask-item__text,
+    .ask-list.is-hovering.is-moving .ask-item:not(.is-active) .ask-item__rule {
+        opacity: 0.5;
+        transition: opacity 600ms ease;
+    }
 }
 
-.card-visual polygon,
-.card-visual circle {
-    stroke: var(--color-foreground);
-    stroke-width: 3px;
-    fill: none;
+.ask-item__rule {
+    position: relative;
+    z-index: 1;
+    height: 1px;
+    background: var(--color-foreground);
+    opacity: 1;
+    transition: opacity 600ms ease;
 }
 
-.card-body {
-    padding: 12px;
-    font-size: 14px;
-    line-height: 22px;
+.but-also-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.but-also-item {
+    font-family: var(--font-primary);
+    font-size: clamp(28px, 3.3vw, 47.2px);
+    line-height: 1.15;
+    font-weight: 400;
+}
+
+.but-also-rule {
+    grid-row: 3;
+    grid-column: 3 / -1;
+    margin-top: 24px;
+    height: 1px;
+    background: var(--color-foreground);
 }
 
 .tenet {
@@ -735,7 +765,7 @@ footer > * {
 
 .footer-pill--link {
     background: transparent;
-    color: var(--color-foreground);
+    color: var(--color-accent);
     border: 1px solid var(--color-foreground);
 }
 
@@ -863,6 +893,7 @@ body.light-mode {
     --color-foreground: #161818;
     --color-background: #FFE0DD;
     --color-foreground-rgb: 22 24 24;
+    --color-accent: #161818;
 
     .theme-toggle {
         .theme-toggle__thumb {
@@ -901,18 +932,6 @@ body.light-mode {
 }
 
 /* Your styles start here */
-
-#infinite-scroll-root {
-    position: relative;
-}
-
-.site-copy {
-    display: block;
-}
-
-.infinite-sentinel {
-    height: 1px;
-}
 
 /* Eye lab */
 .eye-lab {

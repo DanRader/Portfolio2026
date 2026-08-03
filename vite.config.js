@@ -18,9 +18,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        tenet1: resolve(__dirname, 'tenet-1.html'),
-        tenet2: resolve(__dirname, 'tenet-2.html'),
-        tenet3: resolve(__dirname, 'tenet-3.html'),
       },
     },
   },
