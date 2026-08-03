@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hero Experiment 2 — Dither Dissolve</title>
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background: #161818;
+            color: #F6D7D4;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        /* ── Grain overlay ───────────────────────────────────────── */
+        .grain {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+            background-image: url('/assets/grain-overlay.png');
+            background-size: 112% 112%;
+            background-position: center;
+            opacity: 0.10;
+            mix-blend-mode: screen;
+        }
+
+        /* ── 6-col grid overlay ──────────────────────────────────── */
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            padding: 0 40px;
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 24px;
+            pointer-events: none;
+            z-index: 9;
+        }
+
+        .grid-col {
+            border: 1px solid rgba(246, 215, 212, 0.08);
+        }
+
+        /* ── Hero layout ─────────────────────────────────────────── */
+        .hero {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 40px;
+            gap: 32px;
+        }
+
+        .hero-title-wrap {
+            position: relative;
+            width: 100%;
+            height: clamp(64px, 27vw, 390px);
+        }
+
+        /* Real text stays in the DOM for a11y/SEO but is visually hidden;
+           the canvas renders the visible dissolve effect on top of it. */
+        .hero-title {
+            position: absolute;
+            inset: 0;
+            font-size: clamp(56px, 24.3vw, 349px);
+            font-weight: 700;
+            line-height: 1.0;
+            letter-spacing: -0.04em;
+            color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            white-space: nowrap;
+        }
+
+        .hero-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .hero-subrow {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 24px;
+        }
+
+        .hero-subrow__item {
+            font-size: 16.89px;
+            font-weight: 400;
+            line-height: 1.65;
+            letter-spacing: -0.04em;
+            color: #F6D7D4;
+            opacity: 0.7;
+        }
+
+        .hero-subrow__item:nth-child(1) { grid-column: 1; }
+        .hero-subrow__item:nth-child(2) { grid-column: 3; }
+        .hero-subrow__item:nth-child(3) { grid-column: 5; }
+
+        /* ── Debug / tuning panel ─────────────────────────────────── */
+        .debug {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            width: 260px;
+            padding: 12px 12px 10px;
+            border: 1px solid rgba(246, 215, 212, 0.25);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(10px);
+            font-size: 11px;
+            line-height: 1.4;
+            z-index: 20;
+        }
+
+        .debug__row {
+            display: grid;
+            grid-template-columns: 84px 1fr 40px;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 0;
+        }
+
+        .debug__group-title {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            opacity: 0.5;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(246, 215, 212, 0.15);
+        }
+
+        .debug__group-title:first-child {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+
+        .debug input[type="range"] {
+            width: 100%;
+        }
+
+        .debug__value {
+            text-align: right;
+            opacity: 0.7;
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="grain" aria-hidden="true"></div>
+
+    <div class="grid-overlay" aria-hidden="true">
+        <div class="grid-col"></div>
+        <div class="grid-col"></div>
+        <div class="grid-col"></div>
+        <div class="grid-col"></div>
+        <div class="grid-col"></div>
+        <div class="grid-col"></div>
+    </div>
+
+    <main class="hero">
+        <div class="hero-title-wrap">
+            <h1 class="hero-title">dan rader</h1>
+            <canvas class="hero-canvas" id="glcanvas" aria-hidden="true"></canvas>
+        </div>
+        <div class="hero-subrow" aria-hidden="true">
+            <p class="hero-subrow__item">Design leader</p>
+            <p class="hero-subrow__item">Systems thinker</p>
+            <p class="hero-subrow__item">Human native</p>
+        </div>
+    </main>
+
+    <div class="debug" aria-hidden="true">
+        <div class="debug__group-title">Dither</div>
+        <div class="debug__row">
+            <label>Blur amt</label>
+            <input autocomplete="off" type="range" id="ctrlBlur" min="0" max="10" step="0.1" value="2.9">
+            <span class="debug__value" data-for="ctrlBlur">2.9</span>
+        </div>
+        <div class="debug__row">
+            <label>Soft</label>
+            <input autocomplete="off" type="range" id="ctrlSoft" min="0.005" max="0.15" step="0.005" value="0.115">
+            <span class="debug__value" data-for="ctrlSoft">0.115</span>
+        </div>
+
+        <div class="debug__group-title">Bleed</div>
+        <div class="debug__row">
+            <label>Amount</label>
+            <input autocomplete="off" type="range" id="ctrlBleedAmt" min="0" max="1" step="0.01" value="0.48">
+            <span class="debug__value" data-for="ctrlBleedAmt">0.48</span>
+        </div>
+        <div class="debug__row">
+            <label>Scale</label>
+            <input autocomplete="off" type="range" id="ctrlBleedScale" min="1" max="20" step="0.5" value="5">
+            <span class="debug__value" data-for="ctrlBleedScale">5</span>
+        </div>
+        <div class="debug__row">
+            <label>Blur</label>
+            <input autocomplete="off" type="range" id="ctrlBleedBlur" min="10" max="100" step="1" value="23">
+            <span class="debug__value" data-for="ctrlBleedBlur">23</span>
+        </div>
+        <div class="debug__row">
+            <label>Threshold</label>
+            <input autocomplete="off" type="range" id="ctrlBleedThreshold" min="0.1" max="0.9" step="0.01" value="0.5">
+            <span class="debug__value" data-for="ctrlBleedThreshold">0.5</span>
+        </div>
+        <div class="debug__row">
+            <label>Softness</label>
+            <input autocomplete="off" type="range" id="ctrlBleedSoftness" min="0.02" max="0.6" step="0.01" value="0.3">
+            <span class="debug__value" data-for="ctrlBleedSoftness">0.3</span>
+        </div>
+        <div class="debug__row">
+            <label>Aspect</label>
+            <input autocomplete="off" type="range" id="ctrlBleedAspect" min="0.2" max="5" step="0.05" value="1">
+            <span class="debug__value" data-for="ctrlBleedAspect">1</span>
+        </div>
+
+        <div class="debug__group-title">Warp</div>
+        <div class="debug__row">
+            <label>Base</label>
+            <input autocomplete="off" type="range" id="ctrlWarpBase" min="0" max="0.1" step="0.001" value="0.04">
+            <span class="debug__value" data-for="ctrlWarpBase">0.04</span>
+        </div>
+        <div class="debug__row">
+            <label>Scale</label>
+            <input autocomplete="off" type="range" id="ctrlWarpScale" min="1" max="20" step="0.5" value="5">
+            <span class="debug__value" data-for="ctrlWarpScale">5</span>
+        </div>
+        <div class="debug__row">
+            <label>Reveal</label>
+            <input autocomplete="off" type="range" id="ctrlWarpBleedAmt" min="0" max="40" step="0.5" value="15">
+            <span class="debug__value" data-for="ctrlWarpBleedAmt">15</span>
+        </div>
+
+        <div class="debug__group-title">Hover</div>
+        <div class="debug__row">
+            <label>Radius</label>
+            <input autocomplete="off" type="range" id="ctrlHoverRadius" min="0.02" max="2" step="0.02" value="1.24">
+            <span class="debug__value" data-for="ctrlHoverRadius">1.24</span>
+        </div>
+        <div class="debug__row">
+            <label>Core</label>
+            <input autocomplete="off" type="range" id="ctrlHoverCore" min="0.01" max="0.3" step="0.01" value="0.01">
+            <span class="debug__value" data-for="ctrlHoverCore">0.01</span>
+        </div>
+        <div class="debug__row">
+            <label>Irregular</label>
+            <input autocomplete="off" type="range" id="ctrlHoverIrregularity" min="0" max="0.9" step="0.02" value="0.2">
+            <span class="debug__value" data-for="ctrlHoverIrregularity">0.2</span>
+        </div>
+        <div class="debug__row">
+            <label>Warp amt</label>
+            <input autocomplete="off" type="range" id="ctrlHoverWarpAmt" min="0" max="0.2" step="0.005" value="0.12">
+            <span class="debug__value" data-for="ctrlHoverWarpAmt">0.12</span>
+        </div>
+        <div class="debug__row">
+            <label>Scale amt</label>
+            <input autocomplete="off" type="range" id="ctrlHoverScaleAmt" min="0" max="20" step="0.5" value="3.5">
+            <span class="debug__value" data-for="ctrlHoverScaleAmt">3.5</span>
+        </div>
+
+        <div class="debug__group-title">Post</div>
+        <div class="debug__row">
+            <label>Blur</label>
+            <input autocomplete="off" type="range" id="ctrlPostBlur" min="0" max="0.5" step="0.01" value="0.26">
+            <span class="debug__value" data-for="ctrlPostBlur">0.26</span>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        const titleEl = document.querySelector('.hero-title');
+        const wrapEl = document.querySelector('.hero-title-wrap');
+        const canvas = document.getElementById('glcanvas');
+        const WORD = titleEl.textContent;
+
+        // ── Tunable config (wired to debug panel) ───────────────────────
+        // Values below are the tuned-by-eye defaults, matched against the
+        // reference screenshot/recording — see debug panel to readjust.
+        const CFG = {
+            blurPx: 2.9,        // blur radius baked into the resting dissolve texture —
+                                // the single knob for how tight or dithered letters look
+            ditherSoft: 0.115,  // small AA softness on the stipple threshold itself
+            bleedAmt: 0.48,     // strength of the uneven "bleed" hotspots
+            bleedScale: 5,      // size of the bleed hotspot blobs (higher = smaller/more)
+            bleedBlurPx: 23,    // dedicated (much heavier) blur radius used only inside
+                                // bleed hotspots — independent of the base blur amount
+            bleedThreshold: 0.5, // noise value above which a patch starts counting as
+                                // a hotspot at all — lower = more area affected
+            bleedSoftness: 0.3, // width of the ramp from "no hotspot" to "full
+                                // hotspot" — narrow = hard-edged blobs, wide = gradual
+            bleedAspect: 1,     // x-scale multiplier on the bleed noise field — the
+                                // wrap is ~3.4:1 wide, so uniform scale already looks
+                                // stretched; tune this to go rounder or more elongated
+            warpBase: 0.04,     // small warp always present on the letters, everywhere
+            warpScale: 5,       // size of the warp's own noise field — independent of
+                                // bleedScale, so warp frequency and bleed blob size
+                                // can be tuned separately instead of moving together
+            warpBleedAmt: 15,   // how much the warp's own displacement magnitude adds
+                                // to the bleed hotspot strength — ties the two
+                                // together so heavier warp = more dither revealed
+            hoverRadius: 1.24,  // radius (aspect-corrected UV) of the cursor's zone
+                                // of influence on the warp — the overall "reach"
+            hoverCore: 0.01,    // absolute size of the solid, undistorted anchor at
+                                // the cursor's exact position — independent of
+                                // hoverRadius, so increasing reach doesn't also grow
+                                // a big flat unmoving zone in the center
+            hoverIrregularity: 0.2, // distorts that radius per-pixel using the same
+                                // bleedField noise, so the influence boundary reads
+                                // as an organic blob, never an identifiable circle
+            hoverWarpAmt: 0.12, // extra warp base added at the cursor's exact position,
+                                // tapering to 0 at hoverRadius
+            hoverScaleAmt: 3.5, // extra warp scale (frequency) added at the cursor's
+                                // exact position, tapering to 0 at hoverRadius
+            postBlurPx: 0.26,   // plain CSS blur over the whole finished effect — a
+                                // final soft-focus pass, independent of every other
+                                // blur above (those shape the dither, this softens all
+                                // of it at once)
+        };
+
+        const sliderResets = [];
+
+        // Post blur is a simple CSS filter on the canvas itself — a real final pass
+        // over the whole composited effect, not another texture/shader parameter.
+        const applyPostBlur = () => {
+            canvas.style.filter = CFG.postBlurPx > 0 ? `blur(${CFG.postBlurPx}px)` : 'none';
+        };
+
+        const bindSlider = (id, key, isFloat = true) => {
+            const el = document.getElementById(id);
+            const valEl = document.querySelector(`[data-for="${id}"]`);
+            const applyDefault = () => {
+                el.value = CFG[key];
+                valEl.textContent = el.value;
+            };
+            applyDefault();
+            sliderResets.push(applyDefault);
+            el.addEventListener('input', () => {
+                CFG[key] = isFloat ? parseFloat(el.value) : parseInt(el.value, 10);
+                valEl.textContent = el.value;
+                if (key === 'blurPx' || key === 'bleedBlurPx') rebuildTextTextures();
+                if (key === 'postBlurPx') applyPostBlur();
+            });
+        };
+        bindSlider('ctrlBlur', 'blurPx');
+        bindSlider('ctrlSoft', 'ditherSoft');
+        bindSlider('ctrlBleedAmt', 'bleedAmt');
+        bindSlider('ctrlBleedScale', 'bleedScale');
+        bindSlider('ctrlBleedBlur', 'bleedBlurPx');
+        bindSlider('ctrlBleedThreshold', 'bleedThreshold');
+        bindSlider('ctrlBleedSoftness', 'bleedSoftness');
+        bindSlider('ctrlBleedAspect', 'bleedAspect');
+        bindSlider('ctrlWarpBase', 'warpBase');
+        bindSlider('ctrlWarpScale', 'warpScale');
+        bindSlider('ctrlWarpBleedAmt', 'warpBleedAmt');
+        bindSlider('ctrlHoverRadius', 'hoverRadius');
+        bindSlider('ctrlHoverCore', 'hoverCore');
+        bindSlider('ctrlHoverIrregularity', 'hoverIrregularity');
+        bindSlider('ctrlHoverWarpAmt', 'hoverWarpAmt');
+        bindSlider('ctrlHoverScaleAmt', 'hoverScaleAmt');
+        bindSlider('ctrlPostBlur', 'postBlurPx');
+        sliderResets.push(applyPostBlur);
+
+        // Browsers restore <input> values on reload independent of
+        // autocomplete="off", and can do so asynchronously at unpredictable times
+        // after this script runs (observed well past 'load' in testing) — re-apply
+        // the CFG defaults (the actual source of truth) repeatedly over the first
+        // couple seconds so our values reliably win the race no matter when the
+        // browser's own restoration fires.
+        const reapplyAllDefaults = () => sliderResets.forEach((fn) => fn());
+        window.addEventListener('pageshow', reapplyAllDefaults);
+        window.addEventListener('load', reapplyAllDefaults);
+        [0, 50, 150, 300, 600, 1000, 2000].forEach((ms) => setTimeout(reapplyAllDefaults, ms));
+
+        // ── WebGL setup ──────────────────────────────────────────────
+        const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true }) ||
+                   canvas.getContext('experimental-webgl');
+
+        if (!gl) {
+            titleEl.style.color = '#F6D7D4';
+            console.warn('WebGL unavailable — falling back to plain text.');
+            return;
+        }
+
+        const vsSrc = `
+            attribute vec2 aPos;
+            varying vec2 vUv;
+            void main() {
+                vUv = aPos * 0.5 + 0.5;
+                vUv.y = 1.0 - vUv.y;
+                gl_Position = vec4(aPos, 0.0, 1.0);
+            }
+        `;
+
+        const fsSrc = `
+            precision highp float;
+            varying vec2 vUv;
+
+            uniform sampler2D uBlur;
+            uniform sampler2D uBleedBlur;
+            uniform float uDitherSoft;
+            uniform float uBleedAmt;
+            uniform float uBleedScale;
+            uniform float uBleedThreshold;
+            uniform float uBleedSoftness;
+            uniform float uBleedAspect;
+            uniform float uWarpBase;
+            uniform float uWarpScale;
+            uniform float uWarpBleedAmt;
+            uniform vec2 uMouseUv;
+            uniform float uHoverRadius;
+            uniform float uHoverCore;
+            uniform float uHoverIrregularity;
+            uniform float uHoverWarpAmt;
+            uniform float uHoverScaleAmt;
+            uniform float uWrapAspect;
+            uniform vec3 uColor;
+
+            // Cheap per-pixel hash noise (organic, not a repeating matrix), static —
+            // no time input, so the pattern doesn't crawl on its own.
+            float hash(vec2 p) {
+                p = fract(p * vec2(123.34, 456.21));
+                p += dot(p, p + 45.32);
+                return fract(p.x * p.y);
+            }
+
+            // Smooth (bilinear-interpolated) value noise — low frequency, so it
+            // reads as blobby patches rather than per-pixel salt-and-pepper.
+            float valueNoise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                float a = hash(i);
+                float b = hash(i + vec2(1.0, 0.0));
+                float c = hash(i + vec2(0.0, 1.0));
+                float d = hash(i + vec2(1.0, 1.0));
+                vec2 u = f * f * (3.0 - 2.0 * f);
+                return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+            }
+
+            void main() {
+                // Low-frequency field driving the bleed hotspots below. uBleedAspect
+                // multiplies only the x-scale — the wrap is much wider than tall, so
+                // a uniform scale already stretches blobs horizontally; this lets that
+                // be tuned independently (1 = current default, <1 counteracts the
+                // stretch toward round, >1 elongates further).
+                vec2 bleedUv = vec2(vUv.x * uBleedAspect, vUv.y) * uBleedScale;
+                float bleedField = valueNoise(bleedUv);
+
+                // uBleedThreshold: noise value above which a patch starts counting as
+                // a hotspot at all. uBleedSoftness: width of the ramp from "no
+                // hotspot" to "full hotspot" — replaces what used to be hardcoded
+                // constants (0.5, 0.8) so both are independently tunable.
+                float loT = clamp(uBleedThreshold, 0.0, 1.0);
+                float hiT = clamp(loT + max(uBleedSoftness, 0.001), 0.0, 1.0);
+                float hotspot = smoothstep(loT, hiT, bleedField) * uBleedAmt;
+
+                // Hover: within a radius of the cursor, boost both warp base
+                // (displacement magnitude) and warp scale (noise frequency) above
+                // their resting values, tapering back to normal at the radius edge.
+                // Aspect-corrected so the underlying distance is a true circle on
+                // screen, not an ellipse stretched by the wrap's wide proportions —
+                // but the radius itself is then distorted by the SAME bleedField
+                // noise already driving the bleed hotspots, so the influence
+                // boundary reads as an irregular, organic blob that bulges further
+                // in some directions than others. This deliberately breaks the
+                // circular symmetry: you should feel the effect, not see a ring
+                // tracking the cursor.
+                // A solid, precisely-centered core (undistorted by irregularity) always
+                // anchors the effect exactly to the cursor — without this, the noise
+                // jitter below could shrink the radius right at the cursor's own
+                // position on some pixels, making the effect feel like it doesn't
+                // reliably track the mouse. Only the outer edge, beyond the core, gets
+                // the organic irregular boundary.
+                vec2 uvAspect = vec2(vUv.x * uWrapAspect, vUv.y);
+                vec2 mouseAspect = vec2(uMouseUv.x * uWrapAspect, uMouseUv.y);
+                float distToMouse = distance(uvAspect, mouseAspect);
+
+                // uHoverCore is an absolute size, independent of uHoverRadius — so
+                // cranking Radius up extends how far the effect reaches without also
+                // growing this flat, unmoving anchor zone proportionally.
+                float coreRadius = min(uHoverCore, uHoverRadius);
+                float coreProximity = 1.0 - smoothstep(0.0, max(coreRadius, 0.001), distToMouse);
+
+                float radiusJitter = mix(1.0 - uHoverIrregularity, 1.0 + uHoverIrregularity, bleedField);
+                float outerRadius = max(uHoverRadius * radiusJitter, coreRadius + 0.001);
+                float outerProximity = 1.0 - smoothstep(coreRadius, outerRadius, distToMouse);
+
+                float proximity = max(coreProximity, outerProximity);
+
+                float effWarpBase = uWarpBase + uHoverWarpAmt * proximity;
+                float effWarpScale = uWarpScale + uHoverScaleAmt * proximity;
+
+                // Directional warp from its OWN noise field (uWarpScale) — a small,
+                // constant distortion present on the letters everywhere. Deliberately
+                // a separate field from the bleed hotspots above (uBleedScale), so the
+                // two frequencies can be tuned independently instead of being tied.
+                float e = 0.015;
+                vec2 grad = vec2(
+                    valueNoise((vUv + vec2(e, 0.0)) * effWarpScale) - valueNoise((vUv - vec2(e, 0.0)) * effWarpScale),
+                    valueNoise((vUv + vec2(0.0, e)) * effWarpScale) - valueNoise((vUv - vec2(0.0, e)) * effWarpScale)
+                );
+                vec2 warpDisplacement = grad * effWarpBase;
+                vec2 warpUv = vUv + warpDisplacement;
+
+                // Feed the warp's own displacement magnitude back into the bleed
+                // hotspot strength — wherever the warp is distorting most (which
+                // grows near the cursor via the hover boost above), the letter also
+                // dissolves into dither more, so the two read as one phenomenon:
+                // the warp is what's breaking the text apart into the dither.
+                float warpMag = length(warpDisplacement);
+                hotspot = clamp(hotspot + warpMag * uWarpBleedAmt, 0.0, 1.0);
+
+                // uBlur's own soft alpha gradient is what gets dithered below, so the
+                // fringe around each letter is made of sparser-with-distance dots,
+                // not a smooth blurred halo. Its blur radius is the single knob that
+                // controls how tight or dissolved the resting letters look.
+                float mixedAlpha = texture2D(uBlur, warpUv).a;
+
+                // Uneven "bleed" hotspots blend toward a separately, much-more-heavily
+                // blurred texture — so those patches bleed hard while the rest of the
+                // letter stays at the tight, tuned baseline untouched.
+                float bleedBlur = texture2D(uBleedBlur, warpUv).a;
+                mixedAlpha = mix(mixedAlpha, bleedBlur, hotspot);
+
+                vec2 driftUv = vUv * vec2(900.0, 320.0);
+                float n = hash(floor(driftUv));
+
+                // Threshold band width emerges from how wide the alpha gradient is:
+                // a small blur = thin dither fringe, more blur = wider one. Clamp the
+                // band to [0,1] before comparing — otherwise a large uDitherSoft lets
+                // the lower edge go negative, which makes truly-zero-alpha background
+                // pixels register as partially visible whenever their noise value n
+                // is small, spraying stray dots far outside the letters.
+                float lo = clamp(n - uDitherSoft, 0.0, 1.0);
+                float hi = clamp(n + uDitherSoft, 0.0, 1.0);
+                float visible = smoothstep(lo, hi, mixedAlpha);
+
+                if (visible < 0.02) discard;
+                gl_FragColor = vec4(uColor * visible, visible);
+            }
+        `;
+
+        const compile = (type, src) => {
+            const sh = gl.createShader(type);
+            gl.shaderSource(sh, src);
+            gl.compileShader(sh);
+            if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(sh));
+            }
+            return sh;
+        };
+
+        const prog = gl.createProgram();
+        gl.attachShader(prog, compile(gl.VERTEX_SHADER, vsSrc));
+        gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fsSrc));
+        gl.linkProgram(prog);
+        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+            console.error(gl.getProgramInfoLog(prog));
+        }
+        gl.useProgram(prog);
+
+        const quad = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+        const aPos = gl.getAttribLocation(prog, 'aPos');
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+        const uBlur = gl.getUniformLocation(prog, 'uBlur');
+        const uBleedBlur = gl.getUniformLocation(prog, 'uBleedBlur');
+        const uDitherSoft = gl.getUniformLocation(prog, 'uDitherSoft');
+        const uBleedAmt = gl.getUniformLocation(prog, 'uBleedAmt');
+        const uBleedScale = gl.getUniformLocation(prog, 'uBleedScale');
+        const uBleedThreshold = gl.getUniformLocation(prog, 'uBleedThreshold');
+        const uBleedSoftness = gl.getUniformLocation(prog, 'uBleedSoftness');
+        const uBleedAspect = gl.getUniformLocation(prog, 'uBleedAspect');
+        const uWarpBase = gl.getUniformLocation(prog, 'uWarpBase');
+        const uWarpScale = gl.getUniformLocation(prog, 'uWarpScale');
+        const uWarpBleedAmt = gl.getUniformLocation(prog, 'uWarpBleedAmt');
+        const uMouseUv = gl.getUniformLocation(prog, 'uMouseUv');
+        const uHoverRadius = gl.getUniformLocation(prog, 'uHoverRadius');
+        const uHoverCore = gl.getUniformLocation(prog, 'uHoverCore');
+        const uHoverIrregularity = gl.getUniformLocation(prog, 'uHoverIrregularity');
+        const uHoverWarpAmt = gl.getUniformLocation(prog, 'uHoverWarpAmt');
+        const uHoverScaleAmt = gl.getUniformLocation(prog, 'uHoverScaleAmt');
+        const uWrapAspect = gl.getUniformLocation(prog, 'uWrapAspect');
+        const uColor = gl.getUniformLocation(prog, 'uColor');
+
+        const makeTex = () => {
+            const tex = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, tex);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            return tex;
+        };
+
+        const blurTex = makeTex();
+        const bleedBlurTex = makeTex();
+
+        // ── Text rasterization (crisp + blurred alpha textures) ─────────
+        let textCanvasW = 0, textCanvasH = 0;
+
+        const rasterizeText = () => {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const rect = wrapEl.getBoundingClientRect();
+            textCanvasW = Math.max(2, Math.round(rect.width * dpr));
+            textCanvasH = Math.max(2, Math.round(rect.height * dpr));
+
+            let fontPx = rect.height * 0.86; // approximates the CSS clamp() cap-height fit
+
+            // Bold Helvetica is noticeably wider than the layout was tuned for —
+            // measure and shrink to fit so the word never clips off the canvas.
+            const measureCtx = document.createElement('canvas').getContext('2d');
+            const buildFontStr = (px) => `700 ${px}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+            measureCtx.font = buildFontStr(fontPx);
+            try { measureCtx.letterSpacing = `${fontPx * -0.04}px`; } catch (e) { /* unsupported */ }
+            const measuredWidth = measureCtx.measureText(WORD).width;
+            const maxWidth = rect.width * 0.99;
+            if (measuredWidth > maxWidth) {
+                fontPx *= maxWidth / measuredWidth;
+            }
+
+            const fontStr = buildFontStr(fontPx);
+
+            const draw = (blurAmount) => {
+                const c = document.createElement('canvas');
+                c.width = textCanvasW;
+                c.height = textCanvasH;
+                const ctx = c.getContext('2d');
+                ctx.scale(dpr, dpr);
+                ctx.font = fontStr;
+                try { ctx.letterSpacing = `${fontPx * -0.04}px`; } catch (e) { /* unsupported */ }
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillStyle = '#fff';
+                if (blurAmount > 0) ctx.filter = `blur(${blurAmount}px)`;
+                const baselineY = rect.height * 0.82;
+                ctx.fillText(WORD, 0, baselineY);
+                return c;
+            };
+
+            const blurCanvas = draw(CFG.blurPx);
+            const bleedBlurCanvas = draw(CFG.bleedBlurPx);
+
+            gl.bindTexture(gl.TEXTURE_2D, blurTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, blurCanvas);
+
+            gl.bindTexture(gl.TEXTURE_2D, bleedBlurTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bleedBlurCanvas);
+        };
+
+        function rebuildTextTextures() { rasterizeText(); }
+
+        // ── Mouse tracking for the hover warp boost ───────────────────
+        // Real-time radial falloff from the current cursor position — no decay
+        // trail, just instant proximity (unlike the old removed hover system).
+        let wrapAspect = 1;
+        let mouseUv = { x: -10, y: -10 }; // parked off-canvas until first hover
+
+        window.addEventListener('pointermove', (e) => {
+            const rect = wrapEl.getBoundingClientRect();
+            mouseUv.x = (e.clientX - rect.left) / rect.width;
+            mouseUv.y = (e.clientY - rect.top) / rect.height;
+        }, { passive: true });
+
+        window.addEventListener('pointerleave', () => {
+            mouseUv.x = -10;
+            mouseUv.y = -10;
+        });
+
+        // ── Resize handling ──────────────────────────────────────────
+        const resize = () => {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const rect = wrapEl.getBoundingClientRect();
+            canvas.width = Math.max(2, Math.round(rect.width * dpr));
+            canvas.height = Math.max(2, Math.round(rect.height * dpr));
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            wrapAspect = rect.width / Math.max(rect.height, 1);
+            rasterizeText();
+        };
+        window.addEventListener('resize', resize);
+        resize();
+
+        // ── Render loop ──────────────────────────────────────────────
+        const frame = () => {
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+            gl.useProgram(prog);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, blurTex);
+            gl.uniform1i(uBlur, 0);
+
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, bleedBlurTex);
+            gl.uniform1i(uBleedBlur, 1);
+
+            gl.uniform1f(uDitherSoft, CFG.ditherSoft);
+            gl.uniform1f(uBleedAmt, CFG.bleedAmt);
+            gl.uniform1f(uBleedScale, CFG.bleedScale);
+            gl.uniform1f(uBleedThreshold, CFG.bleedThreshold);
+            gl.uniform1f(uBleedSoftness, CFG.bleedSoftness);
+            gl.uniform1f(uBleedAspect, CFG.bleedAspect);
+            gl.uniform1f(uWarpBase, CFG.warpBase);
+            gl.uniform1f(uWarpScale, CFG.warpScale);
+            gl.uniform1f(uWarpBleedAmt, CFG.warpBleedAmt);
+            gl.uniform2f(uMouseUv, mouseUv.x, mouseUv.y);
+            gl.uniform1f(uHoverRadius, CFG.hoverRadius);
+            gl.uniform1f(uHoverCore, CFG.hoverCore);
+            gl.uniform1f(uHoverIrregularity, CFG.hoverIrregularity);
+            gl.uniform1f(uHoverWarpAmt, CFG.hoverWarpAmt);
+            gl.uniform1f(uHoverScaleAmt, CFG.hoverScaleAmt);
+            gl.uniform1f(uWrapAspect, wrapAspect);
+            gl.uniform3f(uColor, 0xF6/255, 0xD7/255, 0xD4/255);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            requestAnimationFrame(frame);
+        };
+
+        requestAnimationFrame(frame);
+    })();
+    </script>
+</body>
+</html>
