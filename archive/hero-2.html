@@ -36,9 +36,16 @@
         }
 
         /* ── 6-col grid overlay ──────────────────────────────────── */
+        /* Fluid up to the 2000px breakpoint; beyond it the grid locks to a
+           2000px max-width and centers (equal margins) rather than continuing
+           to stretch edge-to-edge on ultra-wide viewports. The `inset: 0` left
+           two/right:0 combined with max-width + margin:auto is what lets a
+           fixed-position element center itself this way. */
         .grid-overlay {
             position: fixed;
             inset: 0;
+            max-width: 2000px;
+            margin: 0 auto;
             padding: 0 40px;
             display: grid;
             grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -56,6 +63,8 @@
             position: relative;
             z-index: 2;
             width: 100%;
+            max-width: 2000px;
+            margin: 0 auto;
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -67,7 +76,8 @@
         .hero-title-wrap {
             position: relative;
             width: 100%;
-            height: clamp(64px, 27vw, 390px);
+            /* 19.5vw reaches the 390px ceiling exactly at a 2000px viewport */
+            height: clamp(64px, 19.5vw, 390px);
         }
 
         /* Real text stays in the DOM for a11y/SEO but is visually hidden;
@@ -75,7 +85,8 @@
         .hero-title {
             position: absolute;
             inset: 0;
-            font-size: clamp(56px, 24.3vw, 349px);
+            /* 17.45vw reaches the 349px ceiling exactly at a 2000px viewport */
+            font-size: clamp(56px, 17.45vw, 349px);
             font-weight: 700;
             line-height: 1.0;
             letter-spacing: -0.04em;
@@ -86,10 +97,11 @@
         }
 
         .hero-canvas {
+            /* left/top/width/height are set inline by JS (resize()) so the
+               canvas can extend beyond the wrap's own box — giving the
+               blur/dither/warp fringe physical pixels to render into instead
+               of being clipped at the wrap's edge. */
             position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
             display: block;
         }
 
@@ -433,7 +445,20 @@
             uniform float uHoverWarpAmt;
             uniform float uHoverScaleAmt;
             uniform float uWrapAspect;
+            uniform float uTexMarginUv;
+            uniform float uTexScaleUv;
+            uniform vec2 uDitherFreq;
             uniform vec3 uColor;
+
+            // The rasterized textures (and now the canvas itself) are larger
+            // than the "core" wrap area on every side (see MARGIN_FRAC in JS)
+            // so blur/dither/warp have room to fade out naturally instead of
+            // hard-clipping at the wrap's edge. Remap a core-space UV (0..1
+            // across the wrap) into that wider texture's UV space before
+            // sampling it.
+            vec2 toTexUv(vec2 u) {
+                return vec2(uTexMarginUv + u.x * uTexScaleUv, uTexMarginUv + u.y * uTexScaleUv);
+            }
 
             // Cheap per-pixel hash noise (organic, not a repeating matrix), static —
             // no time input, so the pattern doesn't crawl on its own.
@@ -457,12 +482,19 @@
             }
 
             void main() {
+                // vUv spans the whole (now expanded) canvas; re-anchor to the
+                // "core" 0..1 space that matches the wrap's own box — the same
+                // space mouseUv, bleed frequency, and hover radius were tuned
+                // against — so none of the procedural math below shifts scale
+                // or position just because the physical canvas got bigger.
+                vec2 coreUv = (vUv - vec2(uTexMarginUv)) / uTexScaleUv;
+
                 // Low-frequency field driving the bleed hotspots below. uBleedAspect
                 // multiplies only the x-scale — the wrap is much wider than tall, so
                 // a uniform scale already stretches blobs horizontally; this lets that
                 // be tuned independently (1 = current default, <1 counteracts the
                 // stretch toward round, >1 elongates further).
-                vec2 bleedUv = vec2(vUv.x * uBleedAspect, vUv.y) * uBleedScale;
+                vec2 bleedUv = vec2(coreUv.x * uBleedAspect, coreUv.y) * uBleedScale;
                 float bleedField = valueNoise(bleedUv);
 
                 // uBleedThreshold: noise value above which a patch starts counting as
@@ -490,7 +522,7 @@
                 // position on some pixels, making the effect feel like it doesn't
                 // reliably track the mouse. Only the outer edge, beyond the core, gets
                 // the organic irregular boundary.
-                vec2 uvAspect = vec2(vUv.x * uWrapAspect, vUv.y);
+                vec2 uvAspect = vec2(coreUv.x * uWrapAspect, coreUv.y);
                 vec2 mouseAspect = vec2(uMouseUv.x * uWrapAspect, uMouseUv.y);
                 float distToMouse = distance(uvAspect, mouseAspect);
 
@@ -515,11 +547,11 @@
                 // two frequencies can be tuned independently instead of being tied.
                 float e = 0.015;
                 vec2 grad = vec2(
-                    valueNoise((vUv + vec2(e, 0.0)) * effWarpScale) - valueNoise((vUv - vec2(e, 0.0)) * effWarpScale),
-                    valueNoise((vUv + vec2(0.0, e)) * effWarpScale) - valueNoise((vUv - vec2(0.0, e)) * effWarpScale)
+                    valueNoise((coreUv + vec2(e, 0.0)) * effWarpScale) - valueNoise((coreUv - vec2(e, 0.0)) * effWarpScale),
+                    valueNoise((coreUv + vec2(0.0, e)) * effWarpScale) - valueNoise((coreUv - vec2(0.0, e)) * effWarpScale)
                 );
                 vec2 warpDisplacement = grad * effWarpBase;
-                vec2 warpUv = vUv + warpDisplacement;
+                vec2 warpUv = coreUv + warpDisplacement;
 
                 // Feed the warp's own displacement magnitude back into the bleed
                 // hotspot strength — wherever the warp is distorting most (which
@@ -533,15 +565,19 @@
                 // fringe around each letter is made of sparser-with-distance dots,
                 // not a smooth blurred halo. Its blur radius is the single knob that
                 // controls how tight or dissolved the resting letters look.
-                float mixedAlpha = texture2D(uBlur, warpUv).a;
+                float mixedAlpha = texture2D(uBlur, toTexUv(warpUv)).a;
 
                 // Uneven "bleed" hotspots blend toward a separately, much-more-heavily
                 // blurred texture — so those patches bleed hard while the rest of the
                 // letter stays at the tight, tuned baseline untouched.
-                float bleedBlur = texture2D(uBleedBlur, warpUv).a;
+                float bleedBlur = texture2D(uBleedBlur, toTexUv(warpUv)).a;
                 mixedAlpha = mix(mixedAlpha, bleedBlur, hotspot);
 
-                vec2 driftUv = vUv * vec2(900.0, 320.0);
+                // uDitherFreq is boosted on the JS side once the wrap grows past a
+                // reference width, so each stipple cell stays roughly the same
+                // physical size on large/wide viewports instead of stretching into
+                // big, blocky "digital" dots.
+                vec2 driftUv = coreUv * uDitherFreq;
                 float n = hash(floor(driftUv));
 
                 // Threshold band width emerges from how wide the alpha gradient is:
@@ -603,6 +639,9 @@
         const uHoverWarpAmt = gl.getUniformLocation(prog, 'uHoverWarpAmt');
         const uHoverScaleAmt = gl.getUniformLocation(prog, 'uHoverScaleAmt');
         const uWrapAspect = gl.getUniformLocation(prog, 'uWrapAspect');
+        const uTexMarginUv = gl.getUniformLocation(prog, 'uTexMarginUv');
+        const uTexScaleUv = gl.getUniformLocation(prog, 'uTexScaleUv');
+        const uDitherFreq = gl.getUniformLocation(prog, 'uDitherFreq');
         const uColor = gl.getUniformLocation(prog, 'uColor');
 
         const makeTex = () => {
@@ -621,26 +660,99 @@
         // ── Text rasterization (crisp + blurred alpha textures) ─────────
         let textCanvasW = 0, textCanvasH = 0;
 
+        // The text now fills the wrap's full width exactly (see fontPx below),
+        // but blur/dither/warp all need physical canvas space beyond the glyph
+        // to fade into naturally — without it, the first/last letters get a
+        // hard-clipped edge (and warp sampling near the cursor can overflow the
+        // texture and clamp/smear). MARGIN_FRAC reserves that space on each
+        // side; toTexUv() in the shader remaps sampling so the visible fill
+        // still touches the true edges exactly.
+        const MARGIN_FRAC = 0.2;
+        const texMarginUv = MARGIN_FRAC / (1 + 2 * MARGIN_FRAC);
+        const texScaleUv = 1 / (1 + 2 * MARGIN_FRAC);
+
+        // ── Responsive stacking ──────────────────────────────────────────
+        // At/below STACK_BREAKPOINT the name breaks after the first word
+        // ("dan" / "rader" stacked on two lines) instead of running as one
+        // line — narrow viewports don't have the width for "dan rader" at a
+        // legible size. Once stacked, "rader" (the wider of the two words)
+        // is what dictates the font size, same as the full phrase does
+        // in single-line mode.
+        const STACK_BREAKPOINT = 700;
+        const [WORD_LINE1, WORD_LINE2] = WORD.split(' ');
+
+        // TEXT_FILL_SCALE backs off slightly from an exact edge-to-edge fit
+        // so the last letter reads as roughly aligned to the rightmost grid
+        // line rather than flush/overlapping it.
+        const TEXT_FILL_SCALE = 0.99;
+        // Matches the original single-line tuning: a line's font size sits at
+        // ~86% of its own line box, with the baseline at ~82% down that box
+        // (leaving room for descenders). Reused per-line in stacked mode so
+        // each line keeps the same visual proportions as the single-line case.
+        const FONT_TO_BOX_RATIO = 0.86;
+        const BASELINE_RATIO = 0.82;
+        // Baseline-to-baseline distance between stacked lines, as a multiple
+        // of the font size — tighter than a full line box so "dan"/"rader"
+        // read as one tight lockup rather than two loosely spaced lines.
+        const STACK_LINE_ADVANCE_RATIO = 0.78;
+
+        const buildFontStr = (px) => `700 ${px}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+        const measureCtx = document.createElement('canvas').getContext('2d');
+        const measureWidth = (word, px) => {
+            measureCtx.font = buildFontStr(px);
+            try { measureCtx.letterSpacing = `${px * -0.04}px`; } catch (e) { /* unsupported */ }
+            return measureCtx.measureText(word).width;
+        };
+        // Width scales linearly with font px, so the result is independent of
+        // the probe size used to measure it.
+        const fontPxForWidth = (word, targetWidth) => {
+            const probePx = 100;
+            return probePx * targetWidth / measureWidth(word, probePx);
+        };
+
+        const computeLayout = () => {
+            const rectWidth = wrapEl.getBoundingClientRect().width;
+            const stacked = window.innerWidth <= STACK_BREAKPOINT;
+            const maxWidth = rectWidth * TEXT_FILL_SCALE;
+            const fontPx = stacked
+                ? fontPxForWidth(WORD_LINE2, maxWidth)
+                : fontPxForWidth(WORD, maxWidth);
+            const lineBoxH = fontPx / FONT_TO_BOX_RATIO;
+            const lines = stacked ? [WORD_LINE1, WORD_LINE2] : [WORD];
+
+            // Baseline offsets measured from the top of the content box (i.e.
+            // before adding the wrap's own vertical margin below). Single-line
+            // mode keeps the original box proportions; stacked mode keeps the
+            // same top/bottom clearance but uses a tighter baseline-to-baseline
+            // advance between lines.
+            const topPad = lineBoxH * BASELINE_RATIO;
+            const bottomPad = lineBoxH * (1 - BASELINE_RATIO);
+            const advance = fontPx * STACK_LINE_ADVANCE_RATIO;
+            const baselineOffsets = lines.map((_, i) => topPad + advance * i);
+            const totalHeight = stacked
+                ? topPad + advance * (lines.length - 1) + bottomPad
+                : lineBoxH;
+
+            return { fontPx, lines, stacked, baselineOffsets, totalHeight };
+        };
+
+        // Must run (and the wrap's box settle) before anything reads the
+        // wrap's rect for margin/canvas sizing, since stacked mode's height
+        // is derived from the font size rather than fixed by CSS.
+        const updateWrapHeight = () => {
+            const { totalHeight, stacked } = computeLayout();
+            wrapEl.style.height = stacked ? `${totalHeight}px` : '';
+        };
+
         const rasterizeText = () => {
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
             const rect = wrapEl.getBoundingClientRect();
-            textCanvasW = Math.max(2, Math.round(rect.width * dpr));
-            textCanvasH = Math.max(2, Math.round(rect.height * dpr));
+            const marginPxX = rect.width * MARGIN_FRAC;
+            const marginPxY = rect.height * MARGIN_FRAC;
+            textCanvasW = Math.max(2, Math.round((rect.width + marginPxX * 2) * dpr));
+            textCanvasH = Math.max(2, Math.round((rect.height + marginPxY * 2) * dpr));
 
-            let fontPx = rect.height * 0.86; // approximates the CSS clamp() cap-height fit
-
-            // Bold Helvetica is noticeably wider than the layout was tuned for —
-            // measure and shrink to fit so the word never clips off the canvas.
-            const measureCtx = document.createElement('canvas').getContext('2d');
-            const buildFontStr = (px) => `700 ${px}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
-            measureCtx.font = buildFontStr(fontPx);
-            try { measureCtx.letterSpacing = `${fontPx * -0.04}px`; } catch (e) { /* unsupported */ }
-            const measuredWidth = measureCtx.measureText(WORD).width;
-            const maxWidth = rect.width * 0.99;
-            if (measuredWidth > maxWidth) {
-                fontPx *= maxWidth / measuredWidth;
-            }
-
+            const { fontPx, lines, baselineOffsets } = computeLayout();
             const fontStr = buildFontStr(fontPx);
 
             const draw = (blurAmount) => {
@@ -654,8 +766,9 @@
                 ctx.textBaseline = 'alphabetic';
                 ctx.fillStyle = '#fff';
                 if (blurAmount > 0) ctx.filter = `blur(${blurAmount}px)`;
-                const baselineY = rect.height * 0.82;
-                ctx.fillText(WORD, 0, baselineY);
+                lines.forEach((line, i) => {
+                    ctx.fillText(line, marginPxX, baselineOffsets[i] + marginPxY);
+                });
                 return c;
             };
 
@@ -677,6 +790,18 @@
         let wrapAspect = 1;
         let mouseUv = { x: -10, y: -10 }; // parked off-canvas until first hover
 
+        // The dither hash is sampled at a fixed frequency across the wrap's
+        // 0..1 UV space, so a wider wrap stretches each stipple cell over
+        // more physical pixels — past DITHER_FREQ_REFERENCE_PX the dots start
+        // reading as big, blocky "digital" squares instead of fine stippling.
+        // Scaling the frequency up in step with wrap width above that
+        // reference keeps cell size roughly constant on large viewports,
+        // without changing the already-tuned look at/below it.
+        const DITHER_BASE_FREQ = { x: 900, y: 320 };
+        const DITHER_FREQ_REFERENCE_PX = 1400;
+        let ditherFreqX = DITHER_BASE_FREQ.x;
+        let ditherFreqY = DITHER_BASE_FREQ.y;
+
         window.addEventListener('pointermove', (e) => {
             const rect = wrapEl.getBoundingClientRect();
             mouseUv.x = (e.clientX - rect.left) / rect.width;
@@ -689,13 +814,34 @@
         });
 
         // ── Resize handling ──────────────────────────────────────────
+        // The canvas itself is expanded by MARGIN_FRAC on every side (same
+        // margin as the texture) and offset with negative left/top so its
+        // "core" region still lines up exactly with the wrap's box — giving
+        // the blur/dither/warp fringe physical canvas pixels to render into
+        // beyond the wrap's edge instead of being clipped there.
         const resize = () => {
+            updateWrapHeight();
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
             const rect = wrapEl.getBoundingClientRect();
-            canvas.width = Math.max(2, Math.round(rect.width * dpr));
-            canvas.height = Math.max(2, Math.round(rect.height * dpr));
+            const marginPxX = rect.width * MARGIN_FRAC;
+            const marginPxY = rect.height * MARGIN_FRAC;
+            const cssW = rect.width + marginPxX * 2;
+            const cssH = rect.height + marginPxY * 2;
+
+            canvas.style.left = `${-marginPxX}px`;
+            canvas.style.top = `${-marginPxY}px`;
+            canvas.style.width = `${cssW}px`;
+            canvas.style.height = `${cssH}px`;
+
+            canvas.width = Math.max(2, Math.round(cssW * dpr));
+            canvas.height = Math.max(2, Math.round(cssH * dpr));
             gl.viewport(0, 0, canvas.width, canvas.height);
             wrapAspect = rect.width / Math.max(rect.height, 1);
+
+            const ditherFreqScale = Math.max(1, rect.width / DITHER_FREQ_REFERENCE_PX);
+            ditherFreqX = DITHER_BASE_FREQ.x * ditherFreqScale;
+            ditherFreqY = DITHER_BASE_FREQ.y * ditherFreqScale;
+
             rasterizeText();
         };
         window.addEventListener('resize', resize);
@@ -735,6 +881,9 @@
             gl.uniform1f(uHoverWarpAmt, CFG.hoverWarpAmt);
             gl.uniform1f(uHoverScaleAmt, CFG.hoverScaleAmt);
             gl.uniform1f(uWrapAspect, wrapAspect);
+            gl.uniform1f(uTexMarginUv, texMarginUv);
+            gl.uniform1f(uTexScaleUv, texScaleUv);
+            gl.uniform2f(uDitherFreq, ditherFreqX, ditherFreqY);
             gl.uniform3f(uColor, 0xF6/255, 0xD7/255, 0xD4/255);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, quad);
