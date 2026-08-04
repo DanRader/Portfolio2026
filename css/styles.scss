@@ -136,6 +136,8 @@ header {
         grid-template-columns: repeat(6, minmax(0, 1fr));
         gap: 24px;
         align-items: center;
+        max-width: 2000px;
+        margin: 0 auto;
         padding: 0 40px;
         height: var(--header-height);
     }
@@ -267,6 +269,8 @@ main {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     column-gap: 24px;
     row-gap: var(--section-spacing);
+    max-width: 2000px;
+    margin: 0 auto;
     padding: 0 40px;
 }
 
@@ -284,20 +288,44 @@ main > section {
     padding-bottom: 5vh;
 }
 
-.intro-title {
+.intro-title-wrap {
     position: relative;
-    z-index: 1;
     width: 100%;
+    /* 19.5vw reaches the 390px ceiling exactly at a 2000px viewport */
+    height: clamp(64px, 19.5vw, 390px);
+}
+
+/* Real text stays in the DOM for a11y/SEO but is visually hidden; the canvas
+   (see js/heroEffect.js) renders the visible WebGL dither/dissolve effect on
+   top of it. */
+.intro-title {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
     margin: 0;
-    font-size: clamp(56px, 24.3vw, 349.57px);
-    line-height: 1.08;
-    font-weight: 400;
+    /* 17.45vw reaches the 349px ceiling exactly at a 2000px viewport */
+    font-size: clamp(56px, 17.45vw, 349px);
+    line-height: 1.0;
+    font-weight: 700;
     letter-spacing: -0.04em;
-    color: var(--color-accent);
+    color: transparent;
     text-transform: lowercase;
+    white-space: nowrap;
 
     user-select: none;
     -webkit-user-select: none;
+}
+
+.intro-canvas {
+    /* left/top/width/height are set inline by JS (resize()) so the canvas can
+       extend beyond the wrap's own box — giving the blur/dither/warp fringe
+       physical pixels to render into instead of being clipped at the wrap's
+       edge. Overrides the site-wide `canvas { max-width: 100% }` reset above,
+       which would otherwise clamp this canvas back down to the wrap's own
+       width and squash the whole effect. */
+    position: absolute;
+    display: block;
+    max-width: none;
 }
 
 .intro-subrow {
@@ -541,7 +569,10 @@ section[aria-label="Core Tenets"] .tenet--strips20 .tenet-biasSlice__text {
 .ask-list {
     display: flex;
     flex-direction: column;
-    gap: 27px;
+    /* No gap here - the visual spacing between items now lives entirely on
+       each .ask-item as padding instead, so two neighboring items' hover
+       areas touch (and slightly overlap) with no unhoverable dead zone between
+       them (see the mouseenter/mouseleave binding on the whole item in script.js). */
 }
 
 .ask-item {
@@ -549,35 +580,80 @@ section[aria-label="Core Tenets"] .tenet--strips20 .tenet-biasSlice__text {
     display: flex;
     flex-direction: column;
     gap: 24px;
-    isolation: isolate;
+    /* Whole pixels only - a fractional split (e.g. 13.5px/13.5px) can round
+       differently per browser/DPI and leave a hairline dead-zone strip at the
+       seam. margin-top pulls each item up by 1px into the previous item's
+       padding, forcing a small deliberate overlap so the two hit areas are
+       guaranteed to meet with zero gap even if a sub-pixel rounding
+       discrepancy exists. Net visual spacing is unchanged (14 - 1 + 14 = 27px,
+       same as before).
+       No isolation:isolate here (deliberately) - see ask-item__video and
+       ask-item__text for why every item now needs to share one flat stacking
+       context instead of each getting its own walled-off one. */
+    padding: 14px 0;
 }
 
-.ask-item.is-active {
-    /* Lets this item's full-height video reveal bleed over its neighbors above
-       and below instead of being painted under them. Applied via JS (see
-       script.js) rather than :hover, since the hover target is scoped to just
-       the title text, not the whole item (gap + rule included). */
-    z-index: 10;
+.ask-item:not(:first-child) {
+    margin-top: -1px;
 }
 
-.ask-list.is-hovering .ask-item:not(.is-active) {
-    /* The active item's video is a full-screen fixed overlay, so without this
-       every other item's (dimmed) title would be painted underneath it and
-       invisible no matter its opacity. This keeps them above that overlay. */
-    z-index: 20;
+.ask-item:first-child {
+    /* Keeps the list's overall top edge exactly where it was before the gap
+       moved onto padding - only the space *between* items should grow. */
+    padding-top: 0;
+}
+
+.ask-item:last-child {
+    padding-bottom: 0;
+}
+
+/* Videos and text/rules used to live in each .ask-item's own isolated stacking
+   context, with the *whole item* jumping between z-index 10 (active) and 20
+   (inactive) so inactive titles could float above the active item's
+   full-screen video. That meant the instant an item stopped being active, its
+   still-fading-out video got promoted above the newly-active item's
+   video/text for the length of the crossfade - a visibly "wrong" stacking
+   order that read as a flash/pop once it resolved.
+   Instead, every video always sits at z-index 5 and every title/rule always
+   sits at z-index 10, full stop, regardless of active state - text is simply
+   never coverable by any video, so there's nothing for active-state changes
+   to get wrong. ask-scrim (z-index 4) sits behind every video for the same
+   reason: two videos crossfading are both partially transparent for a beat,
+   and without a solid layer behind them that can briefly reveal whatever's
+   underneath (the page background) as a flash of the wrong color. */
+.ask-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    /* Tracks the video's own crossfade timing (not the text's), since it's
+       part of the same visual layer and needs to stay dark for exactly as
+       long as two videos might be crossfading. */
+    transition: opacity var(--ask-video-transition-ms, 600ms) ease-in-out;
+}
+
+.ask-list.is-hovering .ask-scrim {
+    opacity: 1;
 }
 
 .ask-item__video {
     /* Fixed + inset:0 always covers the full viewport, regardless of scroll
        position or where this item sits in the grid, so it reads as a true
-       full-screen reveal. isolation:isolate + .is-active's z-index still
-       confines it below the (higher, separately-stacked) header. */
+       full-screen reveal. z-index is fixed (not toggled by active state) and
+       well below the header's, so it can never cover the header or any item's
+       text/rule.
+       This uses its own --ask-video-transition-ms rather than the text's
+       --ask-transition-ms - a video dissolve generally wants to run slower
+       and smoother (ease-in-out) than a UI opacity fade, so they're tuned
+       independently (see askSettings.videoTransitionMs / the ?tune panel). */
     position: fixed;
     inset: 0;
-    z-index: 0;
+    z-index: 5;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 400ms ease;
+    transition: opacity var(--ask-video-transition-ms, 600ms) ease-in-out;
 }
 
 .ask-item__video::after {
@@ -602,69 +678,121 @@ section[aria-label="Core Tenets"] .tenet--strips20 .tenet-biasSlice__text {
 
 .ask-item__text {
     position: relative;
-    z-index: 1;
+    z-index: 10;
     font-family: var(--font-primary);
     font-size: clamp(28px, 3.3vw, 47.2px);
     line-height: 1.15;
     font-weight: 400;
     opacity: 1;
-    /* Reveals (back to fully visible) are the slow, lazy transition; see the
-       hidden/half-visible states below for the fast hide. */
-    transition: opacity 600ms ease;
+    transform: translateY(0);
+    transition: opacity var(--ask-transition-ms, 300ms) ease, transform var(--ask-transition-ms, 300ms) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    /* Belt-and-suspenders: the base rule above already carries this transition
+       for every state (active or not), but this makes explicit that becoming
+       active - going from dimmed/hidden back to full opacity - fades in over
+       the same timing rather than snapping straight to opacity:1. */
+    .ask-item.is-active .ask-item__text {
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity var(--ask-transition-ms, 300ms) ease, transform var(--ask-transition-ms, 300ms) ease;
+    }
 }
 
 @media (hover: hover) and (pointer: fine) {
     /* While an item is active, the other titles hide completely so the video
-       reveal has full focus. If the mouse starts moving, they bump up to a
-       half-visible affordance hinting they're hoverable too; once it settles
-       again (see script.js), they sink back to fully hidden.
-
-       Hiding (dropping to 0) is snappy so it never feels like it's lagging
-       behind the cursor; revealing (back to 0.5 or 1) is slower and lazier so
-       it doesn't feel glitchy/flickery. CSS transitions use the duration
-       defined on the state being transitioned *to*, so the fast/slow split
-       just lives on the opacity:0 vs opacity:0.5/1 rules below. */
+       reveal has full focus. script.js tracks cursor speed and only adds
+       .is-moving once the cursor is moving fast enough, holding it revealed for
+       a beat (askSettings.holdMs) before fading back out once it slows/stops.
+       --ask-transition-ms is set from JS (tunable live via ?tune) so the fade
+       duration here always matches whatever's configured there. */
     .ask-list.is-hovering .ask-item:not(.is-active) .ask-item__text,
     .ask-list.is-hovering .ask-item:not(.is-active) .ask-item__rule {
         opacity: 0;
-        transition: opacity 120ms ease;
+    }
+
+    /* While hidden, the other items also sit offset away from their resting
+       spot - items above the active one start higher up (negative Y), items
+       below it start lower down (positive Y). :has(~ .is-active) matches items
+       with a later .is-active sibling (i.e. items above it); the plain ~
+       combinator matches items after it (below it). When they reveal below,
+       both resolve back to translateY(0), so they read as sliding *into*
+       place - above items sliding down, below items sliding up - rather than
+       being pushed away as they appear. */
+    .ask-list.is-hovering .ask-item:has(~ .is-active) .ask-item__text,
+    .ask-list.is-hovering .ask-item:has(~ .is-active) .ask-item__rule {
+        transform: translateY(-6px);
+    }
+
+    .ask-list.is-hovering .ask-item.is-active ~ .ask-item .ask-item__text,
+    .ask-list.is-hovering .ask-item.is-active ~ .ask-item .ask-item__rule {
+        transform: translateY(6px);
     }
 
     .ask-list.is-hovering.is-moving .ask-item:not(.is-active) .ask-item__text,
     .ask-list.is-hovering.is-moving .ask-item:not(.is-active) .ask-item__rule {
         opacity: 0.5;
-        transition: opacity 600ms ease;
+        transform: translateY(0);
     }
 }
 
 .ask-item__rule {
     position: relative;
-    z-index: 1;
+    z-index: 10;
     height: 1px;
     background: var(--color-foreground);
     opacity: 1;
-    transition: opacity 600ms ease;
+    transform: translateY(0);
+    transition: opacity var(--ask-transition-ms, 300ms) ease, transform var(--ask-transition-ms, 300ms) ease;
 }
 
-.but-also-row {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+.but-also-content {
+    display: flex;
+    flex-direction: column;
     gap: 24px;
 }
 
+.but-also-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.but-also-list-item,
 .but-also-item {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.but-also-list-item__text,
+.but-also-item__text {
     font-family: var(--font-primary);
-    font-size: clamp(28px, 3.3vw, 47.2px);
+    font-size: clamp(21px, 2.5vw, 36px);
     line-height: 1.15;
     font-weight: 400;
 }
 
-.but-also-rule {
-    grid-row: 3;
-    grid-column: 3 / -1;
-    margin-top: 24px;
+.but-also-list-item__rule,
+.but-also-item__rule {
     height: 1px;
     background: var(--color-foreground);
+}
+
+.but-also-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+}
+
+.but-also-item {
+    flex: 0 0 auto;
+}
+
+.but-also-item:last-child {
+    flex: 1 1 0;
+    min-width: 0;
 }
 
 .tenet {
@@ -916,9 +1044,18 @@ body.light-mode {
 }
 
 /* Fixed 6-column grid overlay */
+/* Fluid up to a 2000px viewport; beyond it the grid locks to a 2000px
+   max-width and centers (equal margins) rather than continuing to stretch
+   edge-to-edge on ultra-wide viewports. The `inset: 0` (which sets left/right
+   to 0) combined with max-width + margin:auto is what lets this fixed-position
+   element center itself this way. header nav and main share the same
+   max-width/margin so everything stays aligned to the same columns above
+   2000px too. */
 .grid-overlay {
     position: fixed;
     inset: 0;
+    max-width: 2000px;
+    margin: 0 auto;
     padding: 0 40px;
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));

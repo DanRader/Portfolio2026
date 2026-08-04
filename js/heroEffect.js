@@ -1,0 +1,600 @@
+// WebGL dither/dissolve hero title effect.
+// Tuned in archive/hero-2.html (kept as a live playground for further
+// tuning) — this is the production version wired to the real .intro markup,
+// with the debug/tuning panel stripped out and CFG locked to the tuned
+// defaults.
+
+document.addEventListener('DOMContentLoaded', () => {
+    const titleEl = document.querySelector('.intro-title');
+    const wrapEl = document.querySelector('.intro-title-wrap');
+    const canvas = document.querySelector('.intro-canvas');
+    if (!titleEl || !wrapEl || !canvas) return;
+
+    const WORD = titleEl.textContent;
+
+    // ── Tunable config ───────────────────────────────────────────────
+    // Values below are the tuned-by-eye defaults, matched against the
+    // reference screenshot/recording — see archive/hero-2.html's debug
+    // panel to keep exploring changes before porting them here.
+    const CFG = {
+        blurPx: 2.9,        // blur radius baked into the resting dissolve texture —
+                            // the single knob for how tight or dithered letters look
+        ditherSoft: 0.115,  // small AA softness on the stipple threshold itself
+        bleedAmt: 0.48,     // strength of the uneven "bleed" hotspots
+        bleedScale: 5,      // size of the bleed hotspot blobs (higher = smaller/more)
+        bleedBlurPx: 23,    // dedicated (much heavier) blur radius used only inside
+                            // bleed hotspots — independent of the base blur amount
+        bleedThreshold: 0.5, // noise value above which a patch starts counting as
+                            // a hotspot at all — lower = more area affected
+        bleedSoftness: 0.3, // width of the ramp from "no hotspot" to "full
+                            // hotspot" — narrow = hard-edged blobs, wide = gradual
+        bleedAspect: 1,     // x-scale multiplier on the bleed noise field — the
+                            // wrap is ~3.4:1 wide, so uniform scale already looks
+                            // stretched; tune this to go rounder or more elongated
+        warpBase: 0.04,     // small warp always present on the letters, everywhere
+        warpScale: 5,       // size of the warp's own noise field — independent of
+                            // bleedScale, so warp frequency and bleed blob size
+                            // can be tuned separately instead of moving together
+        warpBleedAmt: 15,   // how much the warp's own displacement magnitude adds
+                            // to the bleed hotspot strength — ties the two
+                            // together so heavier warp = more dither revealed
+        hoverRadius: 1.24,  // radius (aspect-corrected UV) of the cursor's zone
+                            // of influence on the warp — the overall "reach"
+        hoverCore: 0.01,    // absolute size of the solid, undistorted anchor at
+                            // the cursor's exact position — independent of
+                            // hoverRadius, so increasing reach doesn't also grow
+                            // a big flat unmoving zone in the center
+        hoverIrregularity: 0.2, // distorts that radius per-pixel using the same
+                            // bleedField noise, so the influence boundary reads
+                            // as an organic blob, never an identifiable circle
+        hoverWarpAmt: 0.12, // extra warp base added at the cursor's exact position,
+                            // tapering to 0 at hoverRadius
+        hoverScaleAmt: 3.5, // extra warp scale (frequency) added at the cursor's
+                            // exact position, tapering to 0 at hoverRadius
+        postBlurPx: 0.26,   // plain CSS blur over the whole finished effect — a
+                            // final soft-focus pass, independent of every other
+                            // blur above (those shape the dither, this softens all
+                            // of it at once)
+    };
+
+    // Post blur is a simple CSS filter on the canvas itself — a real final pass
+    // over the whole composited effect, not another texture/shader parameter.
+    canvas.style.filter = CFG.postBlurPx > 0 ? `blur(${CFG.postBlurPx}px)` : 'none';
+
+    // ── WebGL setup ──────────────────────────────────────────────
+    const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true }) ||
+               canvas.getContext('experimental-webgl');
+
+    if (!gl) {
+        titleEl.style.color = 'var(--color-accent)';
+        console.warn('WebGL unavailable — falling back to plain text.');
+        return;
+    }
+
+    const vsSrc = `
+        attribute vec2 aPos;
+        varying vec2 vUv;
+        void main() {
+            vUv = aPos * 0.5 + 0.5;
+            vUv.y = 1.0 - vUv.y;
+            gl_Position = vec4(aPos, 0.0, 1.0);
+        }
+    `;
+
+    const fsSrc = `
+        precision highp float;
+        varying vec2 vUv;
+
+        uniform sampler2D uBlur;
+        uniform sampler2D uBleedBlur;
+        uniform float uDitherSoft;
+        uniform float uBleedAmt;
+        uniform float uBleedScale;
+        uniform float uBleedThreshold;
+        uniform float uBleedSoftness;
+        uniform float uBleedAspect;
+        uniform float uWarpBase;
+        uniform float uWarpScale;
+        uniform float uWarpBleedAmt;
+        uniform vec2 uMouseUv;
+        uniform float uHoverRadius;
+        uniform float uHoverCore;
+        uniform float uHoverIrregularity;
+        uniform float uHoverWarpAmt;
+        uniform float uHoverScaleAmt;
+        uniform float uWrapAspect;
+        uniform float uTexMarginUv;
+        uniform float uTexScaleUv;
+        uniform vec2 uDitherFreq;
+        uniform vec3 uColor;
+        // One-time load-in animation: rides on top of the resting warp
+        // base, easing from an elevated starting value back to 0 (no-op)
+        // shortly after load, so the resting state is pixel-identical to
+        // before this was added.
+        uniform float uIntroWarpBoost;
+        uniform float uIntroWarpScaleBoost;
+
+        // The rasterized textures (and now the canvas itself) are larger
+        // than the "core" wrap area on every side (see MARGIN_FRAC in JS)
+        // so blur/dither/warp have room to fade out naturally instead of
+        // hard-clipping at the wrap's edge. Remap a core-space UV (0..1
+        // across the wrap) into that wider texture's UV space before
+        // sampling it.
+        vec2 toTexUv(vec2 u) {
+            return vec2(uTexMarginUv + u.x * uTexScaleUv, uTexMarginUv + u.y * uTexScaleUv);
+        }
+
+        // Cheap per-pixel hash noise (organic, not a repeating matrix), static —
+        // no time input, so the pattern doesn't crawl on its own.
+        float hash(vec2 p) {
+            p = fract(p * vec2(123.34, 456.21));
+            p += dot(p, p + 45.32);
+            return fract(p.x * p.y);
+        }
+
+        // Smooth (bilinear-interpolated) value noise — low frequency, so it
+        // reads as blobby patches rather than per-pixel salt-and-pepper.
+        float valueNoise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            float a = hash(i);
+            float b = hash(i + vec2(1.0, 0.0));
+            float c = hash(i + vec2(0.0, 1.0));
+            float d = hash(i + vec2(1.0, 1.0));
+            vec2 u = f * f * (3.0 - 2.0 * f);
+            return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+        }
+
+        void main() {
+            // vUv spans the whole (now expanded) canvas; re-anchor to the
+            // "core" 0..1 space that matches the wrap's own box — the same
+            // space mouseUv, bleed frequency, and hover radius were tuned
+            // against — so none of the procedural math below shifts scale
+            // or position just because the physical canvas got bigger.
+            vec2 coreUv = (vUv - vec2(uTexMarginUv)) / uTexScaleUv;
+
+            // Low-frequency field driving the bleed hotspots below. uBleedAspect
+            // multiplies only the x-scale — the wrap is much wider than tall, so
+            // a uniform scale already stretches blobs horizontally; this lets that
+            // be tuned independently (1 = current default, <1 counteracts the
+            // stretch toward round, >1 elongates further).
+            vec2 bleedUv = vec2(coreUv.x * uBleedAspect, coreUv.y) * uBleedScale;
+            float bleedField = valueNoise(bleedUv);
+
+            // uBleedThreshold: noise value above which a patch starts counting as
+            // a hotspot at all. uBleedSoftness: width of the ramp from "no
+            // hotspot" to "full hotspot" — replaces what used to be hardcoded
+            // constants (0.5, 0.8) so both are independently tunable.
+            float loT = clamp(uBleedThreshold, 0.0, 1.0);
+            float hiT = clamp(loT + max(uBleedSoftness, 0.001), 0.0, 1.0);
+            float hotspot = smoothstep(loT, hiT, bleedField) * uBleedAmt;
+
+            // Hover: within a radius of the cursor, boost both warp base
+            // (displacement magnitude) and warp scale (noise frequency) above
+            // their resting values, tapering back to normal at the radius edge.
+            // Aspect-corrected so the underlying distance is a true circle on
+            // screen, not an ellipse stretched by the wrap's wide proportions —
+            // but the radius itself is then distorted by the SAME bleedField
+            // noise already driving the bleed hotspots, so the influence
+            // boundary reads as an irregular, organic blob that bulges further
+            // in some directions than others. This deliberately breaks the
+            // circular symmetry: you should feel the effect, not see a ring
+            // tracking the cursor.
+            // A solid, precisely-centered core (undistorted by irregularity) always
+            // anchors the effect exactly to the cursor — without this, the noise
+            // jitter below could shrink the radius right at the cursor's own
+            // position on some pixels, making the effect feel like it doesn't
+            // reliably track the mouse. Only the outer edge, beyond the core, gets
+            // the organic irregular boundary.
+            vec2 uvAspect = vec2(coreUv.x * uWrapAspect, coreUv.y);
+            vec2 mouseAspect = vec2(uMouseUv.x * uWrapAspect, uMouseUv.y);
+            float distToMouse = distance(uvAspect, mouseAspect);
+
+            // uHoverCore is an absolute size, independent of uHoverRadius — so
+            // cranking Radius up extends how far the effect reaches without also
+            // growing this flat, unmoving anchor zone proportionally.
+            float coreRadius = min(uHoverCore, uHoverRadius);
+            float coreProximity = 1.0 - smoothstep(0.0, max(coreRadius, 0.001), distToMouse);
+
+            float radiusJitter = mix(1.0 - uHoverIrregularity, 1.0 + uHoverIrregularity, bleedField);
+            float outerRadius = max(uHoverRadius * radiusJitter, coreRadius + 0.001);
+            float outerProximity = 1.0 - smoothstep(coreRadius, outerRadius, distToMouse);
+
+            float proximity = max(coreProximity, outerProximity);
+
+            // uIntroWarpBoost/uIntroWarpScaleBoost ride on top of the resting
+            // warp for the load-in animation, easing back to 0 (no-op) shortly
+            // after load. The scale boost is randomized per page load (see JS)
+            // so the intro doesn't look identical every time, while still
+            // always settling on the same tuned resting values.
+            float effWarpBase = uWarpBase + uHoverWarpAmt * proximity + uIntroWarpBoost;
+            float effWarpScale = uWarpScale + uHoverScaleAmt * proximity + uIntroWarpScaleBoost;
+
+            // Directional warp from its OWN noise field (uWarpScale) — a small,
+            // constant distortion present on the letters everywhere. Deliberately
+            // a separate field from the bleed hotspots above (uBleedScale), so the
+            // two frequencies can be tuned independently instead of being tied.
+            float e = 0.015;
+            vec2 grad = vec2(
+                valueNoise((coreUv + vec2(e, 0.0)) * effWarpScale) - valueNoise((coreUv - vec2(e, 0.0)) * effWarpScale),
+                valueNoise((coreUv + vec2(0.0, e)) * effWarpScale) - valueNoise((coreUv - vec2(0.0, e)) * effWarpScale)
+            );
+            vec2 warpDisplacement = grad * effWarpBase;
+            vec2 warpUv = coreUv + warpDisplacement;
+
+            // Feed the warp's own displacement magnitude back into the bleed
+            // hotspot strength — wherever the warp is distorting most (which
+            // grows near the cursor via the hover boost above), the letter also
+            // dissolves into dither more, so the two read as one phenomenon:
+            // the warp is what's breaking the text apart into the dither.
+            float warpMag = length(warpDisplacement);
+            hotspot = clamp(hotspot + warpMag * uWarpBleedAmt, 0.0, 1.0);
+
+            // uBlur's own soft alpha gradient is what gets dithered below, so the
+            // fringe around each letter is made of sparser-with-distance dots,
+            // not a smooth blurred halo. Its blur radius is the single knob that
+            // controls how tight or dissolved the resting letters look.
+            float mixedAlpha = texture2D(uBlur, toTexUv(warpUv)).a;
+
+            // Uneven "bleed" hotspots blend toward a separately, much-more-heavily
+            // blurred texture — so those patches bleed hard while the rest of the
+            // letter stays at the tight, tuned baseline untouched.
+            float bleedBlur = texture2D(uBleedBlur, toTexUv(warpUv)).a;
+            mixedAlpha = mix(mixedAlpha, bleedBlur, hotspot);
+
+            // uDitherFreq is boosted on the JS side once the wrap grows past a
+            // reference width, so each stipple cell stays roughly the same
+            // physical size on large/wide viewports instead of stretching into
+            // big, blocky "digital" dots.
+            vec2 driftUv = coreUv * uDitherFreq;
+            float n = hash(floor(driftUv));
+
+            // Threshold band width emerges from how wide the alpha gradient is:
+            // a small blur = thin dither fringe, more blur = wider one. Clamp the
+            // band to [0,1] before comparing — otherwise a large uDitherSoft lets
+            // the lower edge go negative, which makes truly-zero-alpha background
+            // pixels register as partially visible whenever their noise value n
+            // is small, spraying stray dots far outside the letters.
+            float lo = clamp(n - uDitherSoft, 0.0, 1.0);
+            float hi = clamp(n + uDitherSoft, 0.0, 1.0);
+            float visible = smoothstep(lo, hi, mixedAlpha);
+
+            if (visible < 0.02) discard;
+            gl_FragColor = vec4(uColor * visible, visible);
+        }
+    `;
+
+    const compile = (type, src) => {
+        const sh = gl.createShader(type);
+        gl.shaderSource(sh, src);
+        gl.compileShader(sh);
+        if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+            console.error(gl.getShaderInfoLog(sh));
+        }
+        return sh;
+    };
+
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+        console.error(gl.getProgramInfoLog(prog));
+    }
+    gl.useProgram(prog);
+
+    const quad = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    const aPos = gl.getAttribLocation(prog, 'aPos');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+    const uBlur = gl.getUniformLocation(prog, 'uBlur');
+    const uBleedBlur = gl.getUniformLocation(prog, 'uBleedBlur');
+    const uDitherSoft = gl.getUniformLocation(prog, 'uDitherSoft');
+    const uBleedAmt = gl.getUniformLocation(prog, 'uBleedAmt');
+    const uBleedScale = gl.getUniformLocation(prog, 'uBleedScale');
+    const uBleedThreshold = gl.getUniformLocation(prog, 'uBleedThreshold');
+    const uBleedSoftness = gl.getUniformLocation(prog, 'uBleedSoftness');
+    const uBleedAspect = gl.getUniformLocation(prog, 'uBleedAspect');
+    const uWarpBase = gl.getUniformLocation(prog, 'uWarpBase');
+    const uWarpScale = gl.getUniformLocation(prog, 'uWarpScale');
+    const uWarpBleedAmt = gl.getUniformLocation(prog, 'uWarpBleedAmt');
+    const uMouseUv = gl.getUniformLocation(prog, 'uMouseUv');
+    const uHoverRadius = gl.getUniformLocation(prog, 'uHoverRadius');
+    const uHoverCore = gl.getUniformLocation(prog, 'uHoverCore');
+    const uHoverIrregularity = gl.getUniformLocation(prog, 'uHoverIrregularity');
+    const uHoverWarpAmt = gl.getUniformLocation(prog, 'uHoverWarpAmt');
+    const uHoverScaleAmt = gl.getUniformLocation(prog, 'uHoverScaleAmt');
+    const uWrapAspect = gl.getUniformLocation(prog, 'uWrapAspect');
+    const uTexMarginUv = gl.getUniformLocation(prog, 'uTexMarginUv');
+    const uTexScaleUv = gl.getUniformLocation(prog, 'uTexScaleUv');
+    const uDitherFreq = gl.getUniformLocation(prog, 'uDitherFreq');
+    const uColor = gl.getUniformLocation(prog, 'uColor');
+    const uIntroWarpBoost = gl.getUniformLocation(prog, 'uIntroWarpBoost');
+    const uIntroWarpScaleBoost = gl.getUniformLocation(prog, 'uIntroWarpScaleBoost');
+
+    const makeTex = () => {
+        const tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        return tex;
+    };
+
+    const blurTex = makeTex();
+    const bleedBlurTex = makeTex();
+
+    // ── Text rasterization (crisp + blurred alpha textures) ─────────
+    let textCanvasW = 0, textCanvasH = 0;
+
+    // The text now fills the wrap's full width exactly (see fontPx below),
+    // but blur/dither/warp all need physical canvas space beyond the glyph
+    // to fade into naturally — without it, the first/last letters get a
+    // hard-clipped edge (and warp sampling near the cursor can overflow the
+    // texture and clamp/smear). MARGIN_FRAC reserves that space on each
+    // side; toTexUv() in the shader remaps sampling so the visible fill
+    // still touches the true edges exactly.
+    const MARGIN_FRAC = 0.2;
+    const texMarginUv = MARGIN_FRAC / (1 + 2 * MARGIN_FRAC);
+    const texScaleUv = 1 / (1 + 2 * MARGIN_FRAC);
+
+    // ── Responsive stacking ──────────────────────────────────────────
+    // At/below STACK_BREAKPOINT the name breaks after the first word
+    // ("dan" / "rader" stacked on two lines) instead of running as one
+    // line — narrow viewports don't have the width for "dan rader" at a
+    // legible size. Once stacked, "rader" (the wider of the two words)
+    // is what dictates the font size, same as the full phrase does
+    // in single-line mode.
+    const STACK_BREAKPOINT = 700;
+    const [WORD_LINE1, WORD_LINE2] = WORD.split(' ');
+
+    // TEXT_FILL_SCALE backs off slightly from an exact edge-to-edge fit
+    // so the last letter reads as roughly aligned to the rightmost grid
+    // line rather than flush/overlapping it.
+    const TEXT_FILL_SCALE = 0.99;
+    // Matches the original single-line tuning: a line's font size sits at
+    // ~86% of its own line box, with the baseline at ~82% down that box
+    // (leaving room for descenders). Reused per-line in stacked mode so
+    // each line keeps the same visual proportions as the single-line case.
+    const FONT_TO_BOX_RATIO = 0.86;
+    const BASELINE_RATIO = 0.82;
+    // Baseline-to-baseline distance between stacked lines, as a multiple
+    // of the font size — tighter than a full line box so "dan"/"rader"
+    // read as one tight lockup rather than two loosely spaced lines.
+    const STACK_LINE_ADVANCE_RATIO = 0.78;
+
+    const buildFontStr = (px) => `700 ${px}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    const measureWidth = (word, px) => {
+        measureCtx.font = buildFontStr(px);
+        try { measureCtx.letterSpacing = `${px * -0.04}px`; } catch (e) { /* unsupported */ }
+        return measureCtx.measureText(word).width;
+    };
+    // Width scales linearly with font px, so the result is independent of
+    // the probe size used to measure it.
+    const fontPxForWidth = (word, targetWidth) => {
+        const probePx = 100;
+        return probePx * targetWidth / measureWidth(word, probePx);
+    };
+
+    const computeLayout = () => {
+        const rectWidth = wrapEl.getBoundingClientRect().width;
+        const stacked = window.innerWidth <= STACK_BREAKPOINT;
+        const maxWidth = rectWidth * TEXT_FILL_SCALE;
+        const fontPx = stacked
+            ? fontPxForWidth(WORD_LINE2, maxWidth)
+            : fontPxForWidth(WORD, maxWidth);
+        const lineBoxH = fontPx / FONT_TO_BOX_RATIO;
+        const lines = stacked ? [WORD_LINE1, WORD_LINE2] : [WORD];
+
+        // Baseline offsets measured from the top of the content box (i.e.
+        // before adding the wrap's own vertical margin below). Single-line
+        // mode keeps the original box proportions; stacked mode keeps the
+        // same top/bottom clearance but uses a tighter baseline-to-baseline
+        // advance between lines.
+        const topPad = lineBoxH * BASELINE_RATIO;
+        const bottomPad = lineBoxH * (1 - BASELINE_RATIO);
+        const advance = fontPx * STACK_LINE_ADVANCE_RATIO;
+        const baselineOffsets = lines.map((_, i) => topPad + advance * i);
+        const totalHeight = stacked
+            ? topPad + advance * (lines.length - 1) + bottomPad
+            : lineBoxH;
+
+        return { fontPx, lines, stacked, baselineOffsets, totalHeight };
+    };
+
+    // Must run (and the wrap's box settle) before anything reads the
+    // wrap's rect for margin/canvas sizing, since stacked mode's height
+    // is derived from the font size rather than fixed by CSS.
+    const updateWrapHeight = () => {
+        const { totalHeight, stacked } = computeLayout();
+        wrapEl.style.height = stacked ? `${totalHeight}px` : '';
+    };
+
+    const rasterizeText = () => {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = wrapEl.getBoundingClientRect();
+        const marginPxX = rect.width * MARGIN_FRAC;
+        const marginPxY = rect.height * MARGIN_FRAC;
+        textCanvasW = Math.max(2, Math.round((rect.width + marginPxX * 2) * dpr));
+        textCanvasH = Math.max(2, Math.round((rect.height + marginPxY * 2) * dpr));
+
+        const { fontPx, lines, baselineOffsets } = computeLayout();
+        const fontStr = buildFontStr(fontPx);
+
+        const draw = (blurAmount) => {
+            const c = document.createElement('canvas');
+            c.width = textCanvasW;
+            c.height = textCanvasH;
+            const ctx = c.getContext('2d');
+            ctx.scale(dpr, dpr);
+            ctx.font = fontStr;
+            try { ctx.letterSpacing = `${fontPx * -0.04}px`; } catch (e) { /* unsupported */ }
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillStyle = '#fff';
+            if (blurAmount > 0) ctx.filter = `blur(${blurAmount}px)`;
+            lines.forEach((line, i) => {
+                ctx.fillText(line, marginPxX, baselineOffsets[i] + marginPxY);
+            });
+            return c;
+        };
+
+        const blurCanvas = draw(CFG.blurPx);
+        const bleedBlurCanvas = draw(CFG.bleedBlurPx);
+
+        gl.bindTexture(gl.TEXTURE_2D, blurTex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, blurCanvas);
+
+        gl.bindTexture(gl.TEXTURE_2D, bleedBlurTex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bleedBlurCanvas);
+    };
+
+    // ── Mouse tracking for the hover warp boost ───────────────────
+    // Real-time radial falloff from the current cursor position — no decay
+    // trail, just instant proximity.
+    let wrapAspect = 1;
+    let mouseUv = { x: -10, y: -10 }; // parked off-canvas until first hover
+
+    // The dither hash is sampled at a fixed frequency across the wrap's
+    // 0..1 UV space, so a wider wrap stretches each stipple cell over
+    // more physical pixels — past DITHER_FREQ_REFERENCE_PX the dots start
+    // reading as big, blocky "digital" squares instead of fine stippling.
+    // Scaling the frequency up in step with wrap width above that
+    // reference keeps cell size roughly constant on large viewports,
+    // without changing the already-tuned look at/below it.
+    const DITHER_BASE_FREQ = { x: 900, y: 320 };
+    const DITHER_FREQ_REFERENCE_PX = 1400;
+    let ditherFreqX = DITHER_BASE_FREQ.x;
+    let ditherFreqY = DITHER_BASE_FREQ.y;
+
+    window.addEventListener('pointermove', (e) => {
+        const rect = wrapEl.getBoundingClientRect();
+        mouseUv.x = (e.clientX - rect.left) / rect.width;
+        mouseUv.y = (e.clientY - rect.top) / rect.height;
+    }, { passive: true });
+
+    window.addEventListener('pointerleave', () => {
+        mouseUv.x = -10;
+        mouseUv.y = -10;
+    });
+
+    // ── Resize handling ──────────────────────────────────────────
+    // The canvas itself is expanded by MARGIN_FRAC on every side (same
+    // margin as the texture) and offset with negative left/top so its
+    // "core" region still lines up exactly with the wrap's box — giving
+    // the blur/dither/warp fringe physical canvas pixels to render into
+    // beyond the wrap's edge instead of being clipped there.
+    const resize = () => {
+        updateWrapHeight();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = wrapEl.getBoundingClientRect();
+        const marginPxX = rect.width * MARGIN_FRAC;
+        const marginPxY = rect.height * MARGIN_FRAC;
+        const cssW = rect.width + marginPxX * 2;
+        const cssH = rect.height + marginPxY * 2;
+
+        canvas.style.left = `${-marginPxX}px`;
+        canvas.style.top = `${-marginPxY}px`;
+        canvas.style.width = `${cssW}px`;
+        canvas.style.height = `${cssH}px`;
+
+        canvas.width = Math.max(2, Math.round(cssW * dpr));
+        canvas.height = Math.max(2, Math.round(cssH * dpr));
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        wrapAspect = rect.width / Math.max(rect.height, 1);
+
+        const ditherFreqScale = Math.max(1, rect.width / DITHER_FREQ_REFERENCE_PX);
+        ditherFreqX = DITHER_BASE_FREQ.x * ditherFreqScale;
+        ditherFreqY = DITHER_BASE_FREQ.y * ditherFreqScale;
+
+        rasterizeText();
+    };
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ── Load-in animation ─────────────────────────────────────────
+    // On first paint the warp sits at an elevated base (more restless/
+    // alive than the resting look) while the canvas itself settles down
+    // into place from slightly above; both ease to their resting/no-op
+    // values over INTRO_DURATION_MS. Skipped for users who've asked for
+    // reduced motion — they land straight on the resting state.
+    const INTRO_DURATION_MS = 1600;
+    const INTRO_WARP_BASE_START = 0.3; // resting is CFG.warpBase (~0.04)
+    const INTRO_WARP_SCALE_RANDOM_RANGE = 2; // random ± offset from resting CFG.warpScale (5)
+    const INTRO_TRANSLATE_Y_START_PX = 24; // starts this far above resting position
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const introStart = prefersReducedMotion ? -Infinity : performance.now();
+    // Picked once per load so the scale always settles back on the same
+    // tuned resting value (CFG.warpScale) even though the starting point
+    // varies from load to load.
+    const introWarpScaleStartOffset = (Math.random() * 2 - 1) * INTRO_WARP_SCALE_RANDOM_RANGE;
+    // Quint (not cubic) so the deceleration reads clearly on a short
+    // 1.6s animation: fast initial movement, long gentle settle at the end.
+    const easeOutQuint = (t) => 1 - Math.pow(1 - t, 5);
+
+    // ── Render loop ──────────────────────────────────────────────
+    const frame = () => {
+        const introT = Math.min(1, (performance.now() - introStart) / INTRO_DURATION_MS);
+        const introEase = easeOutQuint(introT);
+        const introWarpBoost = introT >= 1 ? 0 : (1 - introEase) * Math.max(0, INTRO_WARP_BASE_START - CFG.warpBase);
+        const introWarpScaleBoost = introT >= 1 ? 0 : (1 - introEase) * introWarpScaleStartOffset;
+
+        if (introT >= 1) {
+            canvas.style.transform = '';
+        } else {
+            const introTranslateY = -(1 - introEase) * INTRO_TRANSLATE_Y_START_PX;
+            canvas.style.transform = `translateY(${introTranslateY}px)`;
+        }
+
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        gl.useProgram(prog);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, blurTex);
+        gl.uniform1i(uBlur, 0);
+
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, bleedBlurTex);
+        gl.uniform1i(uBleedBlur, 1);
+
+        gl.uniform1f(uDitherSoft, CFG.ditherSoft);
+        gl.uniform1f(uBleedAmt, CFG.bleedAmt);
+        gl.uniform1f(uBleedScale, CFG.bleedScale);
+        gl.uniform1f(uBleedThreshold, CFG.bleedThreshold);
+        gl.uniform1f(uBleedSoftness, CFG.bleedSoftness);
+        gl.uniform1f(uBleedAspect, CFG.bleedAspect);
+        gl.uniform1f(uWarpBase, CFG.warpBase);
+        gl.uniform1f(uWarpScale, CFG.warpScale);
+        gl.uniform1f(uWarpBleedAmt, CFG.warpBleedAmt);
+        gl.uniform2f(uMouseUv, mouseUv.x, mouseUv.y);
+        gl.uniform1f(uHoverRadius, CFG.hoverRadius);
+        gl.uniform1f(uHoverCore, CFG.hoverCore);
+        gl.uniform1f(uHoverIrregularity, CFG.hoverIrregularity);
+        gl.uniform1f(uHoverWarpAmt, CFG.hoverWarpAmt);
+        gl.uniform1f(uHoverScaleAmt, CFG.hoverScaleAmt);
+        gl.uniform1f(uWrapAspect, wrapAspect);
+        gl.uniform1f(uTexMarginUv, texMarginUv);
+        gl.uniform1f(uTexScaleUv, texScaleUv);
+        gl.uniform2f(uDitherFreq, ditherFreqX, ditherFreqY);
+        gl.uniform1f(uIntroWarpBoost, introWarpBoost);
+        gl.uniform1f(uIntroWarpScaleBoost, introWarpScaleBoost);
+        gl.uniform3f(uColor, 0xF6/255, 0xD7/255, 0xD4/255);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        requestAnimationFrame(frame);
+    };
+
+    requestAnimationFrame(frame);
+});

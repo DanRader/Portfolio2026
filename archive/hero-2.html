@@ -449,6 +449,12 @@
             uniform float uTexScaleUv;
             uniform vec2 uDitherFreq;
             uniform vec3 uColor;
+            // One-time load-in animation: rides on top of the resting warp
+            // base, easing from an elevated starting value back to 0 (no-op)
+            // shortly after load, so the resting state is pixel-identical to
+            // before this was added.
+            uniform float uIntroWarpBoost;
+            uniform float uIntroWarpScaleBoost;
 
             // The rasterized textures (and now the canvas itself) are larger
             // than the "core" wrap area on every side (see MARGIN_FRAC in JS)
@@ -538,8 +544,13 @@
 
                 float proximity = max(coreProximity, outerProximity);
 
-                float effWarpBase = uWarpBase + uHoverWarpAmt * proximity;
-                float effWarpScale = uWarpScale + uHoverScaleAmt * proximity;
+                // uIntroWarpBoost/uIntroWarpScaleBoost ride on top of the resting
+                // warp for the load-in animation, easing back to 0 (no-op) shortly
+                // after load. The scale boost is randomized per page load (see JS)
+                // so the intro doesn't look identical every time, while still
+                // always settling on the same tuned resting values.
+                float effWarpBase = uWarpBase + uHoverWarpAmt * proximity + uIntroWarpBoost;
+                float effWarpScale = uWarpScale + uHoverScaleAmt * proximity + uIntroWarpScaleBoost;
 
                 // Directional warp from its OWN noise field (uWarpScale) — a small,
                 // constant distortion present on the letters everywhere. Deliberately
@@ -643,6 +654,8 @@
         const uTexScaleUv = gl.getUniformLocation(prog, 'uTexScaleUv');
         const uDitherFreq = gl.getUniformLocation(prog, 'uDitherFreq');
         const uColor = gl.getUniformLocation(prog, 'uColor');
+        const uIntroWarpBoost = gl.getUniformLocation(prog, 'uIntroWarpBoost');
+        const uIntroWarpScaleBoost = gl.getUniformLocation(prog, 'uIntroWarpScaleBoost');
 
         const makeTex = () => {
             const tex = gl.createTexture();
@@ -847,8 +860,40 @@
         window.addEventListener('resize', resize);
         resize();
 
+        // ── Load-in animation ─────────────────────────────────────────
+        // On first paint the warp sits at an elevated base (more restless/
+        // alive than the resting look) while the canvas itself settles down
+        // into place from slightly above; both ease to their resting/no-op
+        // values over INTRO_DURATION_MS. Skipped for users who've asked for
+        // reduced motion — they land straight on the resting state.
+        const INTRO_DURATION_MS = 1600;
+        const INTRO_WARP_BASE_START = 0.3; // resting is CFG.warpBase (~0.04)
+        const INTRO_WARP_SCALE_RANDOM_RANGE = 2; // random ± offset from resting CFG.warpScale (5)
+        const INTRO_TRANSLATE_Y_START_PX = 24; // starts this far above resting position
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const introStart = prefersReducedMotion ? -Infinity : performance.now();
+        // Picked once per load so the scale always settles back on the same
+        // tuned resting value (CFG.warpScale) even though the starting point
+        // varies from load to load.
+        const introWarpScaleStartOffset = (Math.random() * 2 - 1) * INTRO_WARP_SCALE_RANDOM_RANGE;
+        // Quint (not cubic) so the deceleration reads clearly on a short
+        // 1.6s animation: fast initial movement, long gentle settle at the end.
+        const easeOutQuint = (t) => 1 - Math.pow(1 - t, 5);
+
         // ── Render loop ──────────────────────────────────────────────
         const frame = () => {
+            const introT = Math.min(1, (performance.now() - introStart) / INTRO_DURATION_MS);
+            const introEase = easeOutQuint(introT);
+            const introWarpBoost = introT >= 1 ? 0 : (1 - introEase) * Math.max(0, INTRO_WARP_BASE_START - CFG.warpBase);
+            const introWarpScaleBoost = introT >= 1 ? 0 : (1 - introEase) * introWarpScaleStartOffset;
+
+            if (introT >= 1) {
+                canvas.style.transform = '';
+            } else {
+                const introTranslateY = -(1 - introEase) * INTRO_TRANSLATE_Y_START_PX;
+                canvas.style.transform = `translateY(${introTranslateY}px)`;
+            }
+
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -884,6 +929,8 @@
             gl.uniform1f(uTexMarginUv, texMarginUv);
             gl.uniform1f(uTexScaleUv, texScaleUv);
             gl.uniform2f(uDitherFreq, ditherFreqX, ditherFreqY);
+            gl.uniform1f(uIntroWarpBoost, introWarpBoost);
+            gl.uniform1f(uIntroWarpScaleBoost, introWarpScaleBoost);
             gl.uniform3f(uColor, 0xF6/255, 0xD7/255, 0xD4/255);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, quad);

@@ -55,7 +55,10 @@
 
     <main>
         <section class="intro" aria-label="Intro" id="top">
-            <h1 class="intro-title">dan rader</h1>
+            <div class="intro-title-wrap">
+                <h1 class="intro-title">dan rader</h1>
+                <canvas class="intro-canvas" aria-hidden="true"></canvas>
+            </div>
             <div class="intro-subrow">
                 <p class="intro-subrow__item">Design leader</p>
                 <p class="intro-subrow__item">Systems thinker</p>
@@ -88,6 +91,7 @@
                 <p class="section-label">Ask me about</p>
             </div>
             <div class="split-content split-content--wide ask-list">
+                <div class="ask-scrim" aria-hidden="true"></div>
                 <div class="ask-item">
                     <div class="ask-item__video" aria-hidden="true">
                         <video class="ask-item__video-el" muted loop playsinline preload="none" src="/assets/videos/item1-driving-connection.mp4"></video>
@@ -137,13 +141,42 @@
             <div class="split-label">
                 <p class="section-label">But Also</p>
             </div>
-            <div class="split-content split-content--wide but-also-row">
-                <p class="but-also-item">Pottery</p>
-                <p class="but-also-item">Kids</p>
-                <p class="but-also-item">Travel</p>
-                <p class="but-also-item">Bikes</p>
+            <div class="split-content split-content--wide but-also-content">
+                <div class="but-also-list">
+                    <div class="but-also-list-item">
+                        <p class="but-also-list-item__text">Leveraging org design as a catalyst for craft</p>
+                        <div class="but-also-list-item__rule" aria-hidden="true"></div>
+                    </div>
+                    <div class="but-also-list-item">
+                        <p class="but-also-list-item__text">Developing a culture of AI native designers</p>
+                        <div class="but-also-list-item__rule" aria-hidden="true"></div>
+                    </div>
+                    <div class="but-also-list-item">
+                        <p class="but-also-list-item__text">Driving systems thinking as a shared competency</p>
+                        <div class="but-also-list-item__rule" aria-hidden="true"></div>
+                    </div>
+                </div>
+                <div class="but-also-row">
+                    <div class="but-also-item">
+                        <p class="but-also-item__text">Pottery</p>
+                        <div class="but-also-item__rule" aria-hidden="true"></div>
+                    </div>
+                    <div class="but-also-item">
+                        <p class="but-also-item__text">Kids</p>
+                        <div class="but-also-item__rule" aria-hidden="true"></div>
+                    </div>
+                </div>
+                <div class="but-also-row">
+                    <div class="but-also-item">
+                        <p class="but-also-item__text">Travel</p>
+                        <div class="but-also-item__rule" aria-hidden="true"></div>
+                    </div>
+                    <div class="but-also-item">
+                        <p class="but-also-item__text">Bikes</p>
+                        <div class="but-also-item__rule" aria-hidden="true"></div>
+                    </div>
+                </div>
             </div>
-            <div class="but-also-rule" aria-hidden="true"></div>
         </section>
 
         <section class="split" id="timeline" aria-label="Timeline">
@@ -198,5 +231,6 @@
     </footer>
 
     <script type="module" src="/js/script.js"></script>
+    <script type="module" src="/js/heroEffect.js"></script>
 </body>
 </html>
